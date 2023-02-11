@@ -1,4 +1,6 @@
-package echo
+package main
+
+import "github.com/labstack/echo/v4"
 
 type (
 	Option  func(*options)

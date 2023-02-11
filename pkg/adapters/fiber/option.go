@@ -1,4 +1,4 @@
-package fiber
+package main
 
 type (
 	Option  func(*options)

@@ -1,6 +1,7 @@
-package fiber
+package main
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"net/http"
 
 	sentinel "github.com/alibaba/sentinel-golang/api"

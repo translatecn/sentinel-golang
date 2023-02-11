@@ -1,6 +1,7 @@
-package echo
+package main
 
 import (
+	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
 	"net/http/httptest"

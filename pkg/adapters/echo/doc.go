@@ -1,2 +1,2 @@
 // This package provides Sentinel middleware for echo.
-package echo
+package main

@@ -106,7 +106,7 @@ func Test_AssembleMsg(t *testing.T) {
 func Test_caller(t *testing.T) {
 	t.Run("caller1", func(t *testing.T) {
 		file, _ := caller(1)
-		assert.True(t, strings.Contains(file, "logging_test.go"))
+		assert.True(t, strings.Contains(file, "over-logging_test.go"))
 	})
 }
 

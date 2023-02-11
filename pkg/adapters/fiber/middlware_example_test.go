@@ -1,4 +1,6 @@
-package fiber
+package main
+
+import "github.com/gofiber/fiber/v2"
 
 func Example() {
 	app := fiber.New()
