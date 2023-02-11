@@ -68,8 +68,7 @@ func (s TokenResultStatus) String() string {
 }
 
 type TokenResult struct {
-	status TokenResultStatus
-
+	status      TokenResultStatus // 流量规则是否通过
 	blockErr    *BlockError
 	nanosToWait time.Duration
 }

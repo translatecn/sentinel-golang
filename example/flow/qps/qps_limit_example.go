@@ -66,7 +66,7 @@ func main() {
 				TokenCalculateStrategy: flow.Direct,
 				ControlBehavior:        flow.Reject,
 				Threshold:              2,
-				StatIntervalInMs:       1000,
+				StatIntervalInMs:       100000,
 			},
 		})
 		if err != nil {

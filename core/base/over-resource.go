@@ -2,7 +2,7 @@ package base
 
 import "fmt"
 
-// ResourceType represents classification of the resources
+// ResourceType 表示资源的分类
 type ResourceType int32
 
 const (
@@ -15,13 +15,11 @@ const (
 	ResTypeMQ
 )
 
-// TrafficType describes the traffic type: Inbound or Outbound
+// TrafficType 描述了流量类型:Inbound或Outbound
 type TrafficType int32
 
 const (
-	// Inbound represents the inbound traffic (e.g. provider)
 	Inbound TrafficType = iota
-	// Outbound represents the outbound traffic (e.g. consumer)
 	Outbound
 )
 
@@ -36,18 +34,15 @@ func (t TrafficType) String() string {
 	}
 }
 
-// ResourceWrapper represents the invocation
+// ResourceWrapper 表示调用
 type ResourceWrapper struct {
-	// global unique resource name
-	name string
-	// resource classification
-	classification ResourceType
-	// Inbound or Outbound
-	flowType TrafficType
+	name           string       // 全局唯一资源名
+	classification ResourceType // 资源类型
+	flowType       TrafficType  // 流量类型
 }
 
 func (r *ResourceWrapper) String() string {
-	return fmt.Sprintf("ResourceWrapper{name=%s, flowType=%s, classification=%d}", r.name, r.flowType, r.classification)
+	return fmt.Sprintf("资源调用{name=%s, flowType=%s, classification=%d}", r.name, r.flowType, r.classification)
 }
 
 func (r *ResourceWrapper) Name() string {

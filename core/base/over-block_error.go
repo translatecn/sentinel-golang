@@ -2,15 +2,12 @@ package base
 
 import "fmt"
 
-// BlockError indicates the request was blocked by Sentinel.
+// BlockError 表示请求被哨兵拦截。
 type BlockError struct {
-	blockType BlockType
-	// blockMsg provides additional message for the block error.
-	blockMsg string
-
-	rule SentinelRule
-	// snapshotValue represents the triggered "snapshot" value
-	snapshotValue interface{}
+	blockType     BlockType    // 阻塞类型，rpc,db...
+	blockMsg      string       // 提供关于块错误的附加消息。
+	rule          SentinelRule //
+	snapshotValue interface{}  // 表示触发的“快照”值
 }
 
 type BlockErrorOption func(*BlockError)

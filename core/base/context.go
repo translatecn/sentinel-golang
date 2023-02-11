@@ -15,9 +15,8 @@ type EntryContext struct {
 	Resource *ResourceWrapper
 	StatNode StatNode
 
-	Input *SentinelInput
-	// the result of rule slots check
-	RuleCheckResult *TokenResult
+	Input           *SentinelInput
+	RuleCheckResult *TokenResult // 规则槽检查的结果
 	// reserve for storing some intermediate data from the Entry execution process
 	Data map[interface{}]interface{}
 }

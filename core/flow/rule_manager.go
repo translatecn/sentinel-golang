@@ -28,7 +28,7 @@ type TrafficControllerMap map[string][]*TrafficShapingController
 
 var (
 	tcGenFuncMap = make(map[trafficControllerGenKey]TrafficControllerGenFunc, 6)
-	tcMap        = make(TrafficControllerMap)
+	tcMap        = make(TrafficControllerMap) // 记录了流量控制的一些规则
 	tcMux        = new(sync.RWMutex)
 	nopStat      = &standaloneStatistic{
 		reuseResourceStat: false,

@@ -17,6 +17,7 @@ func GlobalSlotChain() *base.SlotChain {
 	return globalSlotChain
 }
 
+// BuildDefaultSlotChain 构建默认的槽链表
 func BuildDefaultSlotChain() *base.SlotChain {
 	sc := base.NewSlotChain()
 	sc.AddStatPrepareSlot(stat.DefaultResourceNodePrepareSlot)

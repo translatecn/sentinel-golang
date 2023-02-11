@@ -9,29 +9,25 @@ import (
 	"github.com/pkg/errors"
 )
 
-type BaseSlot interface {
-	// Order returns the sort value of the slot.
-	// SlotChain will sort all it's slots by ascending sort value in each bucket
-	// (StatPrepareSlot bucket、RuleCheckSlot bucket and StatSlot bucket)
+type Slot interface {
 	Order() uint32
 }
 
-// StatPrepareSlot is responsible for some preparation before statistic
-// For example: init structure and so on
+// StatPrepareSlot 负责统计前的一些准备工作。例如:init结构等等
+// 准备函数初始化
+// 例如:init统计结构，节点等
+// 准备的结果存储在EntryContext中
+// 所有statprepareslot依次执行
+// 准备函数不抛出panic。
 type StatPrepareSlot interface {
-	BaseSlot
-	// Prepare function do some initialization
-	// Such as: init statistic structure、node and etc
-	// The result of preparing would store in EntryContext
-	// All StatPrepareSlots execute in sequence
-	// Prepare function should not throw panic.
+	Slot
 	Prepare(ctx *EntryContext)
 }
 
-// RuleCheckSlot is rule based checking strategy
-// All checking rule must implement this interface.
+// RuleCheckSlot 是基于规则的检查策略
+// 所有检查规则都必须实现此接口。
 type RuleCheckSlot interface {
-	BaseSlot
+	Slot
 	// Check function do some validation
 	// It can break off the slot pipeline
 	// Each TokenResult will return check result
@@ -42,7 +38,7 @@ type RuleCheckSlot interface {
 // StatSlot is responsible for counting all custom biz metrics.
 // StatSlot would not handle any panic, and pass up all panic to slot chain
 type StatSlot interface {
-	BaseSlot
+	Slot
 	// OnEntryPass function will be invoked when StatPrepareSlots and RuleCheckSlots execute pass
 	// StatSlots will do some statistic logic, such as QPS、log、etc
 	OnEntryPassed(ctx *EntryContext)
@@ -57,17 +53,13 @@ type StatSlot interface {
 	OnCompleted(ctx *EntryContext)
 }
 
-// SlotChain hold all system slots and customized slot.
-// SlotChain support plug-in slots developed by developer.
+// SlotChain 保持所有系统槽位和定制槽位。
+// SlotChain 支持开发人员开发的插件槽。
 type SlotChain struct {
-	// statPres is in ascending order by StatPrepareSlot.Order() value.
-	statPres []StatPrepareSlot
-	// ruleChecks is in ascending order by RuleCheckSlot.Order() value.
-	ruleChecks []RuleCheckSlot
-	// stats is in ascending order by StatSlot.Order() value.
-	stats []StatSlot
-	// EntryContext Pool, used for reuse EntryContext object
-	ctxPool *sync.Pool
+	statPres   []StatPrepareSlot // 按StatPrepareSlot.Order()值升序排列。
+	ruleChecks []RuleCheckSlot   // 按StatPrepareSlot.Order()值升序排列。
+	stats      []StatSlot        // 按StatPrepareSlot.Order()值升序排列。
+	ctxPool    *sync.Pool        // EntryContext
 }
 
 var (
@@ -96,7 +88,6 @@ func NewSlotChain() *SlotChain {
 	}
 }
 
-// Get a EntryContext from EntryContext ctxPool, if ctxPool doesn't have enough EntryContext then new one.
 func (sc *SlotChain) GetPooledContext() *EntryContext {
 	ctx := sc.ctxPool.Get().(*EntryContext)
 	ctx.startTime = util.CurrentTimeMillis()
@@ -110,10 +101,10 @@ func (sc *SlotChain) RefurbishContext(c *EntryContext) {
 	}
 }
 
-// AddStatPrepareSlot adds the StatPrepareSlot slot to the StatPrepareSlot list of the SlotChain.
-// All StatPrepareSlot in the list will be sorted according to StatPrepareSlot.Order() in ascending order.
-// AddStatPrepareSlot is non-thread safe,
-// In concurrency scenario, AddStatPrepareSlot must be guarded by SlotChain.RWMutex#Lock
+// AddStatPrepareSlot 将StatPrepareSlot槽位添加到SlotChain的StatPrepareSlot列表中。
+// 列表中的所有StatPrepareSlot将按照StatPrepareSlot. order()从小到大排序。
+// AddStatPrepareSlot是非线程安全的
+// 并发场景下，AddStatPrepareSlot必须由SlotChain保护RWMutex
 func (sc *SlotChain) AddStatPrepareSlot(s StatPrepareSlot) {
 	sc.statPres = append(sc.statPres, s)
 	sort.SliceStable(sc.statPres, func(i, j int) bool {
@@ -143,11 +134,10 @@ func (sc *SlotChain) AddStatSlot(s StatSlot) {
 	})
 }
 
-// The entrance of slot chain
-// Return the TokenResult and nil if internal panic.
+// Entry 如果内部panic，返回TokenResult, nil。
 func (sc *SlotChain) Entry(ctx *EntryContext) *TokenResult {
-	// This should not happen, unless there are errors existing in Sentinel internal.
-	// If happened, need to add TokenResult in EntryContext
+	// 这种情况不应该发生，除非哨兵内部存在错误。
+	// 如果发生了，需要在EntryContext中添加TokenResult
 	defer func() {
 		if err := recover(); err != nil {
 			logging.Error(errors.Errorf("%+v", err), "Sentinel internal panic in SlotChain.Entry()")
@@ -156,7 +146,7 @@ func (sc *SlotChain) Entry(ctx *EntryContext) *TokenResult {
 		}
 	}()
 
-	// execute prepare slot
+	// 执行准备槽
 	sps := sc.statPres
 	if len(sps) > 0 {
 		for _, s := range sps {
@@ -164,17 +154,15 @@ func (sc *SlotChain) Entry(ctx *EntryContext) *TokenResult {
 		}
 	}
 
-	// execute rule based checking slot
+	// 执行基于规则的槽位检查
 	rcs := sc.ruleChecks
 	var ruleCheckRet *TokenResult
 	if len(rcs) > 0 {
 		for _, s := range rcs {
 			sr := s.Check(ctx)
 			if sr == nil {
-				// nil equals to check pass
 				continue
 			}
-			// check slot result
 			if sr.IsBlocked() {
 				ruleCheckRet = sr
 				break

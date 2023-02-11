@@ -9,17 +9,12 @@ import (
 
 type ExitHandler func(entry *SentinelEntry, ctx *EntryContext) error
 
-type SentinelEntry struct {
-	res *ResourceWrapper
-	// one entry bounds with one context
-	ctx *EntryContext
-
-	exitHandlers []ExitHandler
-	// each entry holds a slot chain.
-	// it means this entry will go through the sc
-	sc *SlotChain
-
-	exitCtl sync.Once
+type SentinelEntry struct { // 哨兵监控项
+	res          *ResourceWrapper //
+	ctx          *EntryContext    // 一个条目只包含一个上下文
+	exitHandlers []ExitHandler    //
+	sc           *SlotChain       // 每个条目都有一个槽链。这意味着这个元素会经过sc
+	exitCtl      sync.Once        //
 }
 
 func NewSentinelEntry(ctx *EntryContext, rw *ResourceWrapper, sc *SlotChain) *SentinelEntry {

@@ -9,8 +9,8 @@ import (
 var entryOptsPool = sync.Pool{
 	New: func() interface{} {
 		return &EntryOptions{
-			resourceType: base.ResTypeCommon,
-			entryType:    base.Outbound,
+			resourceType: base.ResTypeCommon, //
+			entryType:    base.Outbound,      // 流量类型
 			batchCount:   1,
 			flag:         0,
 			slotChain:    nil,
@@ -20,10 +20,10 @@ var entryOptsPool = sync.Pool{
 	},
 }
 
-// EntryOptions represents the options of a Sentinel resource entry.
+// EntryOptions 表示哨兵资源条目的选项。
 type EntryOptions struct {
 	resourceType base.ResourceType
-	entryType    base.TrafficType
+	entryType    base.TrafficType // 流量类型
 	batchCount   uint32
 	flag         int32
 	slotChain    *base.SlotChain
@@ -43,67 +43,39 @@ func (o *EntryOptions) Reset() {
 
 type EntryOption func(*EntryOptions)
 
-// WithResourceType sets the resource entry with the given resource type.
+// WithResourceType 使用给定的资源类型设置资源项。
 func WithResourceType(resourceType base.ResourceType) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.resourceType = resourceType
 	}
 }
 
-// WithTrafficType sets the resource entry with the given traffic type.
+// WithTrafficType 使用给定的流量类型设置资源项。
 func WithTrafficType(entryType base.TrafficType) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.entryType = entryType
 	}
 }
 
-// DEPRECATED: use WithBatchCount instead.
-// WithAcquireCount sets the resource entry with the given batch count (by default 1).
-func WithAcquireCount(acquireCount uint32) EntryOption {
-	return func(opts *EntryOptions) {
-		opts.batchCount = acquireCount
-	}
-}
-
-// WithBatchCount sets the resource entry with the given batch count (by default 1).
+// WithBatchCount 使用给定的批处理计数(默认为1)设置资源条目。
 func WithBatchCount(batchCount uint32) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.batchCount = batchCount
 	}
 }
 
-// WithFlag sets the resource entry with the given additional flag.
-func WithFlag(flag int32) EntryOption {
-	return func(opts *EntryOptions) {
-		opts.flag = flag
-	}
-}
-
-// WithArgs sets the resource entry with the given additional parameters.
 func WithArgs(args ...interface{}) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.args = append(opts.args, args...)
 	}
 }
 
-// WithSlotChain sets the slot chain.
 func WithSlotChain(chain *base.SlotChain) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.slotChain = chain
 	}
 }
 
-// WithAttachment set the resource entry with the given k-v pair
-func WithAttachment(key interface{}, value interface{}) EntryOption {
-	return func(opts *EntryOptions) {
-		if opts.attachments == nil {
-			opts.attachments = make(map[interface{}]interface{}, 8)
-		}
-		opts.attachments[key] = value
-	}
-}
-
-// WithAttachment set the resource entry with the given k-v pairs
 func WithAttachments(data map[interface{}]interface{}) EntryOption {
 	return func(opts *EntryOptions) {
 		if opts.attachments == nil {
@@ -115,7 +87,7 @@ func WithAttachments(data map[interface{}]interface{}) EntryOption {
 	}
 }
 
-// Entry is the basic API of Sentinel.
+// Entry 入站流量的入口
 func Entry(resource string, opts ...EntryOption) (*base.SentinelEntry, *base.BlockError) {
 	options := entryOptsPool.Get().(*EntryOptions)
 	defer func() {
@@ -132,6 +104,7 @@ func Entry(resource string, opts ...EntryOption) (*base.SentinelEntry, *base.Blo
 	return entry(resource, options)
 }
 
+// 记录指标数
 func entry(resource string, options *EntryOptions) (*base.SentinelEntry, *base.BlockError) {
 	rw := base.NewResourceWrapper(resource, options.resourceType, options.entryType)
 	sc := options.slotChain
@@ -139,7 +112,7 @@ func entry(resource string, options *EntryOptions) (*base.SentinelEntry, *base.B
 	if sc == nil {
 		return base.NewSentinelEntry(nil, rw, nil), nil
 	}
-	// Get context from pool.
+	// 从池中获取上下文。
 	ctx := sc.GetPooledContext()
 	ctx.Resource = rw
 	ctx.Input.BatchCount = options.batchCount
@@ -152,9 +125,9 @@ func entry(resource string, options *EntryOptions) (*base.SentinelEntry, *base.B
 	}
 	e := base.NewSentinelEntry(ctx, rw, sc)
 	ctx.SetEntry(e)
-	r := sc.Entry(ctx)
+	r := sc.Entry(ctx) // 主逻辑
 	if r == nil {
-		// This indicates internal error in some slots, so just pass
+		// 这表明某些槽中存在内部错误，所以直接通过
 		return e, nil
 	}
 	if r.Status() == base.ResultStatusBlocked {
