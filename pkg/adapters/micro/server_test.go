@@ -14,7 +14,6 @@ import (
 	"github.com/alibaba/sentinel-golang/core/flow"
 	"github.com/alibaba/sentinel-golang/core/stat"
 	"github.com/alibaba/sentinel-golang/util"
-	"github.com/micro/go-micro/v2"
 	"github.com/micro/go-micro/v2/server"
 	"github.com/stretchr/testify/assert"
 )

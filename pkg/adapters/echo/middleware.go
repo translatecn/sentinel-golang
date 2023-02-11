@@ -5,7 +5,6 @@ import (
 
 	sentinel "github.com/alibaba/sentinel-golang/api"
 	"github.com/alibaba/sentinel-golang/core/base"
-	"github.com/labstack/echo/v4"
 )
 
 // SentinelMiddleware returns new echo.HandlerFunc.

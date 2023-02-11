@@ -1,17 +1,3 @@
-// Copyright 1999-2020 Alibaba Group Holding Ltd.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package base
 
 import (
@@ -145,11 +131,11 @@ func (aa *AtomicBucketWrapArray) compareAndSet(idx int, except, update *BucketWr
 // Suppose current timestamp is 1188, bucketLength is 200ms, intervalInMs is 1000ms, then
 // time span of current bucket is [1000, 1200). The representation of the underlying structure:
 //
-//   B0       B1      B2     B3      B4
-//   |_______|_______|_______|_______|_______|
-//  1000    1200    400     600     800    (1000) ms
-//         ^
-//      time=1188
+//	 B0       B1      B2     B3      B4
+//	 |_______|_______|_______|_______|_______|
+//	1000    1200    400     600     800    (1000) ms
+//	       ^
+//	    time=1188
 type LeapArray struct {
 	bucketLengthInMs uint32
 	// sampleCount represents the number of BucketWrap.

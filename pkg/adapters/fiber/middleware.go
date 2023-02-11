@@ -5,7 +5,6 @@ import (
 
 	sentinel "github.com/alibaba/sentinel-golang/api"
 	"github.com/alibaba/sentinel-golang/core/base"
-	"github.com/gofiber/fiber/v2"
 )
 
 // SentinelMiddleware returns new gin.HandlerFunc

@@ -1,17 +1,3 @@
-// Copyright 1999-2020 Alibaba Group Holding Ltd.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package circuitbreaker
 
 import (
@@ -88,7 +74,8 @@ func init() {
 // GetRulesOfResource returns specific resource's rules based on copy.
 // It doesn't take effect for circuit breaker module if user changes the rule.
 // GetRulesOfResource need to compete circuit breaker module's global lock and the high performance losses of copy,
-// 		reduce or do not call GetRulesOfResource frequently if possible
+//
+//	reduce or do not call GetRulesOfResource frequently if possible
 func GetRulesOfResource(resource string) []Rule {
 	updateMux.RLock()
 	resRules, ok := breakerRules[resource]
@@ -106,7 +93,8 @@ func GetRulesOfResource(resource string) []Rule {
 // GetRules returns all the rules based on copy.
 // It doesn't take effect for circuit breaker module if user changes the rule.
 // GetRules need to compete circuit breaker module's global lock and the high performance losses of copy,
-// 		reduce or do not call GetRules if possible
+//
+//	reduce or do not call GetRules if possible
 func GetRules() []Rule {
 	updateMux.RLock()
 	rules := rulesFrom(breakerRules)

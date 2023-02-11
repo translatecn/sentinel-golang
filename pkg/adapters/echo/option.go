@@ -1,9 +1,5 @@
 package echo
 
-import (
-	"github.com/labstack/echo/v4"
-)
-
 type (
 	Option  func(*options)
 	options struct {

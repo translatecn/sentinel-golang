@@ -2,7 +2,6 @@ package apollo
 
 import (
 	"github.com/alibaba/sentinel-golang/ext/datasource"
-	"github.com/apolloconfig/agollo/v4"
 	"github.com/apolloconfig/agollo/v4/component/log"
 	"github.com/apolloconfig/agollo/v4/env/config"
 	"github.com/pkg/errors"

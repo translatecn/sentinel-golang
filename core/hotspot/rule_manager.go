@@ -1,17 +1,3 @@
-// Copyright 1999-2020 Alibaba Group Holding Ltd.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package hotspot
 
 import (
@@ -83,8 +69,9 @@ func getTrafficControllersFor(res string) []TrafficShapingController {
 
 // LoadRules replaces all old hotspot param flow rules with the given rules.
 // Return value:
-//   bool: indicates whether the internal map has been changed;
-//   error: indicates whether occurs the error.
+//
+//	bool: indicates whether the internal map has been changed;
+//	error: indicates whether occurs the error.
 func LoadRules(rules []*Rule) (bool, error) {
 	resRulesMap := make(map[string][]*Rule, 16)
 	for _, rule := range rules {
@@ -110,7 +97,8 @@ func LoadRules(rules []*Rule) (bool, error) {
 // GetRules returns all the hotspot param flow rules based on copy.
 // It doesn't take effect for hotspot module if user changes the returned rules.
 // GetRules need to compete hotspot module's global lock and the high performance losses of copy,
-// 		reduce or do not call GetRules if possible.
+//
+//	reduce or do not call GetRules if possible.
 func GetRules() []Rule {
 	tcMux.RLock()
 	rules := rulesFrom(tcMap)
@@ -126,7 +114,8 @@ func GetRules() []Rule {
 // GetRulesOfResource returns specific resource's hotspot parameter flow control rules based on copy.
 // It doesn't take effect for hotspot module if user changes the returned rules.
 // GetRulesOfResource need to compete hotspot module's global lock and the high performance losses of copy,
-// 		reduce or do not call GetRulesOfResource frequently if possible.
+//
+//	reduce or do not call GetRulesOfResource frequently if possible.
 func GetRulesOfResource(res string) []Rule {
 	tcMux.RLock()
 	resTcs := tcMap[res]

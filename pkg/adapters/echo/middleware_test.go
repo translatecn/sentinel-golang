@@ -8,7 +8,6 @@ import (
 
 	sentinel "github.com/alibaba/sentinel-golang/api"
 	"github.com/alibaba/sentinel-golang/core/flow"
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
