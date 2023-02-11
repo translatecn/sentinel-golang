@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -16,11 +17,9 @@ import (
 const resName = "example-memory-adaptive-qps-flow-resource"
 
 func main() {
-	// We should initialize Sentinel first.
 	conf := config.NewDefaultConfig()
-	// for testing, logging output to console
 	conf.Sentinel.Log.Logger = logging.NewConsoleLogger()
-	// use mock memory usage to replace actual memory usage, so close memory collector
+	// 使用模拟内存使用代替实际内存使用，因此关闭内存收集器
 	conf.Sentinel.Stat.System.CollectIntervalMs = 0
 	conf.Sentinel.Stat.System.CollectMemoryIntervalMs = 0
 
@@ -37,9 +36,8 @@ func main() {
 			StatIntervalInMs:       1000,
 			LowMemUsageThreshold:   1000,
 			HighMemUsageThreshold:  100,
-			// bytes
-			MemLowWaterMarkBytes:  1024,
-			MemHighWaterMarkBytes: 2048,
+			MemLowWaterMarkBytes:   1024,
+			MemHighWaterMarkBytes:  2048,
 		},
 	})
 	if err != nil {
@@ -47,7 +45,7 @@ func main() {
 		return
 	}
 
-	// mock memory usage is 1000 bytes, so QPS threshold should be 1000
+	// 模拟内存使用是1000字节，所以QPS阈值应该是1000
 	system_metric.SetSystemMemoryUsage(999)
 	ch := make(chan struct{})
 	for i := 0; i < 10; i++ {
@@ -59,6 +57,7 @@ func main() {
 					time.Sleep(time.Duration(rand.Uint64()%2) * time.Millisecond)
 				} else {
 					// Passed, wrap the logic here.
+					fmt.Println(time.Now(), "pass")
 					time.Sleep(time.Duration(rand.Uint64()%2) * time.Millisecond)
 					// Be sure the entry is exited finally.
 					e.Exit()

@@ -42,6 +42,7 @@ func NewSlidingWindowMetric(sampleCount, intervalInMs uint32, real *BucketLeapAr
 
 // getBucketStartRange returns start time range of the bucket for the provided time.
 // The actual time span is: [start, end + in.bucketTimeLength)
+// 根据当前时间获取整个周期对应的窗口的开始时间和结束时间
 func (m *SlidingWindowMetric) getBucketStartRange(timeMs uint64) (start, end uint64) {
 	curBucketStartTime := calculateStartTime(timeMs, m.real.BucketLengthInMs())
 	end = curBucketStartTime
@@ -92,6 +93,7 @@ func (m *SlidingWindowMetric) getQPSWithTime(now uint64, event base.MetricEvent)
 	return float64(m.getSumWithTime(now, event)) / m.getIntervalInSecond()
 }
 
+// 根据当前时间获取周期内的所有窗口
 func (m *SlidingWindowMetric) getSatisfiedBuckets(now uint64) []*BucketWrap {
 	start, end := m.getBucketStartRange(now)
 	// Extracts the buckets of which the startTime is between [start, end]

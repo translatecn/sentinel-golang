@@ -12,3 +12,5 @@ require (
 	go.uber.org/multierr v1.5.0
 	gopkg.in/yaml.v2 v2.3.0
 )
+
+replace github.com/alibaba/sentinel-golang => ./

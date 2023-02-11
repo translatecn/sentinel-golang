@@ -22,7 +22,7 @@ func (s MetricType) String() string {
 	}
 }
 
-// Rule describes the isolation policy (e.g. semaphore isolation).
+// Rule 描述隔离策略(例如，信号量隔离)。
 type Rule struct {
 	// ID represents the unique ID of the rule (optional).
 	ID string `json:"id,omitempty"`

@@ -1,5 +1,6 @@
 package main
 
+// 预热,服务能力越来越高
 import (
 	"fmt"
 	"log"
@@ -37,9 +38,9 @@ func main() {
 	_, err = flow.LoadRules([]*flow.Rule{
 		{
 			Resource:               "some-test",
+			Threshold:              100,
 			TokenCalculateStrategy: flow.WarmUp,
 			ControlBehavior:        flow.Reject,
-			Threshold:              100,
 			WarmUpPeriodSec:        10,
 			WarmUpColdFactor:       3,
 			StatIntervalInMs:       1000,
@@ -49,7 +50,7 @@ func main() {
 		log.Fatalf("Unexpected error: %+v", err)
 		return
 	}
-	go timerTask(&counter)
+	go timerPrintTask(&counter)
 	ch := make(chan struct{})
 	//warmUp task
 	for i := 0; i < 3; i++ {
@@ -63,22 +64,7 @@ func main() {
 	<-ch
 }
 
-func Task(counter *Counter) {
-	for {
-		atomic.AddInt64(counter.total, 1)
-		e, b := sentinel.Entry("some-test", sentinel.WithTrafficType(base.Inbound))
-		if b != nil {
-			atomic.AddInt64(counter.block, 1)
-		} else {
-			// Be sure the entry is exited finally.
-			e.Exit()
-			atomic.AddInt64(counter.pass, 1)
-		}
-		time.Sleep(time.Duration(rand.Uint64()%50) * time.Millisecond)
-	}
-}
-
-func timerTask(counter *Counter) {
+func timerPrintTask(counter *Counter) {
 	fmt.Println("begin to statistic!!!")
 	var (
 		oldTotal, oldPass, oldBlock int64
@@ -97,5 +83,19 @@ func timerTask(counter *Counter) {
 		oneSecondBlock := globalBlock - oldBlock
 		oldBlock = globalBlock
 		fmt.Println(util.CurrentTimeMillis()/1000, "total:", oneSecondTotal, " pass:", oneSecondPass, " block:", oneSecondBlock)
+	}
+}
+func Task(counter *Counter) {
+	for {
+		atomic.AddInt64(counter.total, 1)
+		e, b := sentinel.Entry("some-test", sentinel.WithTrafficType(base.Inbound))
+		if b != nil {
+			atomic.AddInt64(counter.block, 1)
+		} else {
+			// Be sure the entry is exited finally.
+			e.Exit()
+			atomic.AddInt64(counter.pass, 1)
+		}
+		time.Sleep(time.Duration(rand.Uint64()%50) * time.Millisecond)
 	}
 }

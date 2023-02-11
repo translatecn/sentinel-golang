@@ -7,14 +7,12 @@ import (
 	"github.com/alibaba/sentinel-golang/util"
 )
 
-// RelationStrategy indicates the flow control strategy based on the relation of invocations.
+// RelationStrategy 表示基于调用关系的流控制策略。
 type RelationStrategy int32
 
 const (
-	// CurrentResource means flow control by current resource directly.
-	CurrentResource RelationStrategy = iota
-	// AssociatedResource means flow control by the associated resource rather than current resource.
-	AssociatedResource
+	CurrentResource    RelationStrategy = iota // 表示使用当前规则的resource做流控；。
+	AssociatedResource                         // 表示使用关联的resource做流控，关联的resource在字段 RefResource 定义；
 )
 
 func (s RelationStrategy) String() string {
@@ -28,12 +26,13 @@ func (s RelationStrategy) String() string {
 	}
 }
 
+// TokenCalculateStrategy 当前流量控制器的Token计算策略。
 type TokenCalculateStrategy int32
 
 const (
-	Direct TokenCalculateStrategy = iota
-	WarmUp
-	MemoryAdaptive
+	Direct         TokenCalculateStrategy = iota // Direct表示直接使用Threshold作为阈值
+	WarmUp                                       // WarmUp表示使用预热方式计算Token的阈值
+	MemoryAdaptive                               // MemoryAdaptive表示使用内存自适应方式计算Token的阈值
 )
 
 func (s TokenCalculateStrategy) String() string {
@@ -49,13 +48,12 @@ func (s TokenCalculateStrategy) String() string {
 	}
 }
 
-// ControlBehavior defines the behavior when requests have reached the capacity of the resource.
+// ControlBehavior // 控制行为，。
 type ControlBehavior int32
 
 const (
-	Reject ControlBehavior = iota
-	// Throttling indicates that pending requests will be throttled, wait in queue (until free capacity is available)
-	Throttling
+	Reject     ControlBehavior = iota // Reject表示直接拒绝
+	Throttling                        // Throttling表示匀速排队(直到空闲容量可用为止)
 )
 
 func (s ControlBehavior) String() string {
@@ -69,40 +67,26 @@ func (s ControlBehavior) String() string {
 	}
 }
 
-// Rule describes the strategy of flow control, the flow control strategy is based on QPS statistic metric
+// Rule 描述了流量控制策略，流量控制策略是基于QPS统计度量的
 type Rule struct {
-	// ID represents the unique ID of the rule (optional).
-	ID string `json:"id,omitempty"`
-	// Resource represents the resource name.
-	Resource               string                 `json:"resource"`
-	TokenCalculateStrategy TokenCalculateStrategy `json:"tokenCalculateStrategy"`
-	ControlBehavior        ControlBehavior        `json:"controlBehavior"`
-	// Threshold means the threshold during StatIntervalInMs
-	// If StatIntervalInMs is 1000(1 second), Threshold means QPS
-	Threshold        float64          `json:"threshold"`
-	RelationStrategy RelationStrategy `json:"relationStrategy"`
-	RefResource      string           `json:"refResource"`
-	// MaxQueueingTimeMs only takes effect when ControlBehavior is Throttling.
-	// When MaxQueueingTimeMs is 0, it means Throttling only controls interval of requests,
-	// and requests exceeding the threshold will be rejected directly.
-	MaxQueueingTimeMs uint32 `json:"maxQueueingTimeMs"`
-	WarmUpPeriodSec   uint32 `json:"warmUpPeriodSec"`
-	WarmUpColdFactor  uint32 `json:"warmUpColdFactor"`
-	// StatIntervalInMs indicates the statistic interval and it's the optional setting for flow Rule.
-	// If user doesn't set StatIntervalInMs, that means using default metric statistic of resource.
-	// If the StatIntervalInMs user specifies can not reuse the global statistic of resource,
-	// 		sentinel will generate independent statistic structure for this rule.
-	StatIntervalInMs uint32 `json:"statIntervalInMs"`
+	ID                     string                 `json:"id,omitempty"`           // 表示规则的唯一ID(可选)。
+	Resource               string                 `json:"resource"`               // 表示资源名称
+	TokenCalculateStrategy TokenCalculateStrategy `json:"tokenCalculateStrategy"` // 令牌计算策略
+	ControlBehavior        ControlBehavior        `json:"controlBehavior"`        // 控制行为
 
-	// adaptive flow control algorithm related parameters
-	// limitation: LowMemUsageThreshold > HighMemUsageThreshold && MemHighWaterMarkBytes > MemLowWaterMarkBytes
-	// if the current memory usage is less than or equals to MemLowWaterMarkBytes, threshold == LowMemUsageThreshold
-	// if the current memory usage is more than or equals to MemHighWaterMarkBytes, threshold == HighMemUsageThreshold
-	// if  the current memory usage is in (MemLowWaterMarkBytes, MemHighWaterMarkBytes), threshold is in (HighMemUsageThreshold, LowMemUsageThreshold)
-	LowMemUsageThreshold  int64 `json:"lowMemUsageThreshold"`
-	HighMemUsageThreshold int64 `json:"highMemUsageThreshold"`
-	MemLowWaterMarkBytes  int64 `json:"memLowWaterMarkBytes"`
-	MemHighWaterMarkBytes int64 `json:"memHighWaterMarkBytes"`
+	Threshold         float64          `json:"threshold"`         // 表示流控阈值；如果字段 StatIntervalInMs 是1000(也就是1秒)，  那么Threshold就表示QPS，流量控制器也就会依据资源的QPS来做流控。
+	RelationStrategy  RelationStrategy `json:"relationStrategy"`  // 调用关系限流策略，
+	RefResource       string           `json:"refResource"`       // 关联资源
+	MaxQueueingTimeMs uint32           `json:"maxQueueingTimeMs"` // 匀速排队的最大等待时间，该字段仅仅对控制行为是匀速排队时生效, 仅在 ControlBehavior 为 Throttling 时生效
+
+	WarmUpPeriodSec  uint32 `json:"warmUpPeriodSec"`  // 预热的时间长度，该字段仅仅对Token计算策略是WarmUp时生效；
+	WarmUpColdFactor uint32 `json:"warmUpColdFactor"` // 预热的因子，默认是3，该值的设置会影响预热的速度,该字段仅仅对Token计算策略是WarmUp时生效
+	StatIntervalInMs uint32 `json:"statIntervalInMs"` // 规则对应的流量控制器的独立统计结构的统计周期。如果StatIntervalInMs是1000，也就是统计QPS。
+
+	LowMemUsageThreshold  int64 `json:"lowMemUsageThreshold"`  // 内存低使用率时的限流阈值，该字段仅在Token计算策略是MemoryAdaptive时生效
+	HighMemUsageThreshold int64 `json:"highMemUsageThreshold"` // 内存高使用率时的限流阈值，该字段仅在Token计算策略是MemoryAdaptive时生效
+	MemLowWaterMarkBytes  int64 `json:"memLowWaterMarkBytes"`  // 内存低水位标记字节大小，该字段仅在Token计算策略是MemoryAdaptive时生效
+	MemHighWaterMarkBytes int64 `json:"memHighWaterMarkBytes"` // 内存高水位标记字节大小，该字段仅在Token计算策略是MemoryAdaptive时生效
 }
 
 func (r *Rule) isEqualsTo(newRule *Rule) bool {

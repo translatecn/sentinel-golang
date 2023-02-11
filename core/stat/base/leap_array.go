@@ -33,6 +33,7 @@ func (ww *BucketWrap) isTimeInBucket(now uint64, bucketLengthInMs uint32) bool {
 	return ww.BucketStart <= now && now < ww.BucketStart+uint64(bucketLengthInMs)
 }
 
+// 计算开始时间
 func calculateStartTime(now uint64, bucketLengthInMs uint32) uint64 {
 	return now - (now % uint64(bucketLengthInMs))
 }
@@ -41,11 +42,9 @@ func calculateStartTime(now uint64, bucketLengthInMs uint32) uint64 {
 //
 // The length of the array should be provided on-create and cannot be modified.
 type AtomicBucketWrapArray struct {
-	// The base address for real data array
-	base unsafe.Pointer
-	// The length of slice(array), it can not be modified.
-	length int
-	data   []*BucketWrap
+	base   unsafe.Pointer // 窗口数组首元素地址
+	length int            // 窗口数组的长度
+	data   []*BucketWrap  //窗口数组
 }
 
 func NewAtomicBucketWrapArrayWithTime(len int, bucketLengthInMs uint32, now uint64, generator BucketGenerator) *AtomicBucketWrapArray {
@@ -53,7 +52,7 @@ func NewAtomicBucketWrapArrayWithTime(len int, bucketLengthInMs uint32, now uint
 		length: len,
 		data:   make([]*BucketWrap, len),
 	}
-
+	// 窗口下标位置
 	idx := int((now / uint64(bucketLengthInMs)) % uint64(len))
 	startTime := calculateStartTime(now, bucketLengthInMs)
 
@@ -77,6 +76,8 @@ func NewAtomicBucketWrapArrayWithTime(len int, bucketLengthInMs uint32, now uint
 	}
 
 	// calculate base address for real data array
+	//3:将窗口数组首元素地址设置到原子时间轮
+	//这么做的原因主要是实现对时间轮中的元素（窗口）进行原子无锁的读取和更新，极大的提升性能。
 	sliHeader := (*util.SliceHeader)(unsafe.Pointer(&ret.data))
 	ret.base = unsafe.Pointer((**BucketWrap)(unsafe.Pointer(sliHeader.Data)))
 	return ret
@@ -91,6 +92,7 @@ func NewAtomicBucketWrapArray(len int, bucketLengthInMs uint32, generator Bucket
 	return NewAtomicBucketWrapArrayWithTime(len, bucketLengthInMs, util.CurrentTimeMillis(), generator)
 }
 
+// 获取对应窗口的地址
 func (aa *AtomicBucketWrapArray) elementOffset(idx int) (unsafe.Pointer, bool) {
 	if idx >= aa.length || idx < 0 {
 		logging.Error(errors.New("array index out of bounds"),
@@ -102,6 +104,7 @@ func (aa *AtomicBucketWrapArray) elementOffset(idx int) (unsafe.Pointer, bool) {
 	return unsafe.Pointer(uintptr(basePtr) + uintptr(idx)*unsafe.Sizeof(basePtr)), true
 }
 
+// 获取对应窗口
 func (aa *AtomicBucketWrapArray) get(idx int) *BucketWrap {
 	// aa.elementOffset(idx) return the secondary pointer of BucketWrap, which is the pointer to the aa.data[idx]
 	// then convert to (*unsafe.Pointer)
@@ -111,6 +114,7 @@ func (aa *AtomicBucketWrapArray) get(idx int) *BucketWrap {
 	return nil
 }
 
+// 替换对应窗口
 func (aa *AtomicBucketWrapArray) compareAndSet(idx int, except, update *BucketWrap) bool {
 	// aa.elementOffset(idx) return the secondary pointer of BucketWrap, which is the pointer to the aa.data[idx]
 	// then convert to (*unsafe.Pointer)
@@ -173,11 +177,15 @@ func (la *LeapArray) currentBucketOfTime(now uint64, bg BucketGenerator) (*Bucke
 		return nil, errors.New("Current time is less than 0.")
 	}
 
+	// 计算当前时间对应的窗口下标
 	idx := la.calculateTimeIdx(now)
+	// 计算当前时间对应的窗口的开始时间
 	bucketStart := calculateStartTime(now, la.bucketLengthInMs)
 
 	for { //spin to get the current BucketWrap
+		// 获取旧窗口
 		old := la.array.get(idx)
+		// 如果旧窗口==nil则初始化(正常不会执行这部分代码)
 		if old == nil {
 			// because la.array.data had initiated when new la.array
 			// theoretically, here is not reachable
@@ -191,9 +199,11 @@ func (la *LeapArray) currentBucketOfTime(now uint64, bg BucketGenerator) (*Bucke
 			} else {
 				runtime.Gosched()
 			}
-		} else if bucketStart == atomic.LoadUint64(&old.BucketStart) {
+
+		} else if bucketStart == atomic.LoadUint64(&old.BucketStart) { // 如果本次计算的开始时间等于旧窗口的开始时间，则认为窗口没有过期，直接返回
 			return old, nil
-		} else if bucketStart > atomic.LoadUint64(&old.BucketStart) {
+
+		} else if bucketStart > atomic.LoadUint64(&old.BucketStart) { //  如果本次计算的开始时间大于旧窗口的开始时间，则认为窗口过期尝试重置
 			// current time has been next cycle of LeapArray and LeapArray dont't count in last cycle.
 			// reset BucketWrap
 			if la.updateLock.TryLock() {

@@ -16,15 +16,13 @@ func init() {
 	metric_exporter.Register(resourceFlowThresholdGauge)
 }
 
-// TrafficShapingCalculator calculates the actual traffic shaping threshold
-// based on the threshold of rule and the traffic shaping strategy.
+// TrafficShapingCalculator 根据规则的阈值和token计算策略计算实际的阈值
 type TrafficShapingCalculator interface {
 	BoundOwner() *TrafficShapingController
 	CalculateAllowedTokens(batchCount uint32, flag int32) float64
 }
 
-// TrafficShapingChecker performs checking according to current metrics and the traffic
-// shaping strategy, then yield the token result.
+// TrafficShapingChecker 根据当前指标和控制行为进行检查，生成token控制结果。
 type TrafficShapingChecker interface {
 	BoundOwner() *TrafficShapingController
 	DoCheck(resStat base.StatNode, batchCount uint32, threshold float64) *base.TokenResult

@@ -158,6 +158,7 @@ func (bla *BucketLeapArray) Values(now uint64) []*BucketWrap {
 	return bla.data.valuesWithTime(now)
 }
 
+// ValuesConditional 匹配符合条件的窗口
 func (bla *BucketLeapArray) ValuesConditional(now uint64, predicate base.TimePredicate) []*BucketWrap {
 	return bla.data.ValuesConditional(now, predicate)
 }

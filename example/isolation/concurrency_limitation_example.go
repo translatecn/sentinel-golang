@@ -13,7 +13,6 @@ import (
 
 func main() {
 	cfg := config.NewDefaultConfig()
-	// for testing, logging output to console
 	cfg.Sentinel.Log.Logger = logging.NewConsoleLogger()
 	err := sentinel.InitWithConfig(cfg)
 	if err != nil {

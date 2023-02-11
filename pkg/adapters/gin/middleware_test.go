@@ -1,4 +1,4 @@
-package gin
+package main
 
 import (
 	"io"
@@ -6,39 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	sentinel "github.com/alibaba/sentinel-golang/api"
-	"github.com/alibaba/sentinel-golang/core/flow"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
-
-func initSentinel(t *testing.T) {
-	err := sentinel.InitDefault()
-	if err != nil {
-		t.Fatalf("Unexpected error: %+v", err)
-	}
-
-	_, err = flow.LoadRules([]*flow.Rule{
-		{
-			Resource:               "GET:/ping",
-			Threshold:              1.0,
-			TokenCalculateStrategy: flow.Direct,
-			ControlBehavior:        flow.Reject,
-			StatIntervalInMs:       1000,
-		},
-		{
-			Resource:               "/api/users/:id",
-			Threshold:              0.0,
-			TokenCalculateStrategy: flow.Direct,
-			ControlBehavior:        flow.Reject,
-			StatIntervalInMs:       1000,
-		},
-	})
-	if err != nil {
-		t.Fatalf("Unexpected error: %+v", err)
-		return
-	}
-}
 
 func TestSentinelMiddleware(t *testing.T) {
 	type args struct {
@@ -79,7 +49,7 @@ func TestSentinelMiddleware(t *testing.T) {
 				args: args{
 					opts: []Option{
 						WithResourceExtractor(func(ctx *gin.Context) string {
-							return ctx.FullPath()
+							return ctx.FullPath() // 请求路径
 						}),
 					},
 					method:  http.MethodPost,
@@ -116,7 +86,7 @@ func TestSentinelMiddleware(t *testing.T) {
 			},
 		}
 	)
-	initSentinel(t)
+	initSentinel()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

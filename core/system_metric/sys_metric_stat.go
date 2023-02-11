@@ -226,7 +226,7 @@ func CurrentLoad() float64 {
 	return r
 }
 
-// Note: SetSystemLoad is used for unit test, the user shouldn't call this function.
+// SetSystemLoad 用于单元测试，用户不应该调用此函数。
 func SetSystemLoad(load float64) {
 	currentLoad.Store(load)
 }
@@ -239,7 +239,7 @@ func CurrentCpuUsage() float64 {
 	return r
 }
 
-// Note: SetSystemCpuUsage is used for unit test, the user shouldn't call this function.
+// SetSystemCpuUsage 用于单元测试，用户不应该调用此函数。
 func SetSystemCpuUsage(cpuUsage float64) {
 	currentCpuUsage.Store(cpuUsage)
 }
@@ -253,7 +253,7 @@ func CurrentMemoryUsage() int64 {
 	return bytes
 }
 
-// Note: SetSystemCpuUsage is used for unit test, the user shouldn't call this function.
+// SetSystemMemoryUsage 用于单元测试，用户不应该调用此函数。
 func SetSystemMemoryUsage(memoryUsage int64) {
 	currentMemoryUsage.Store(memoryUsage)
 }

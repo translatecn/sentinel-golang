@@ -47,6 +47,7 @@ func (m *MemoryAdaptiveTrafficShapingCalculator) CalculateAllowedTokens(_ uint32
 	} else if mem >= m.memHighWaterMark {
 		threshold = float64(m.highMemUsageThreshold)
 	} else {
+		//动态的获取内存已使用的字节(使用工具库 gopsutil)，然后去对比当前内存使用的字节在哪一个区域内，如果在动态的波动区域内则简单的数学公式计算出对应的动态流控阈值
 		threshold = (float64(m.highMemUsageThreshold-m.lowMemUsageThreshold)/float64(m.memHighWaterMark-m.memLowWaterMark))*float64(mem-m.memLowWaterMark) + float64(m.lowMemUsageThreshold)
 	}
 	return threshold

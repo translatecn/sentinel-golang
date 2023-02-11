@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -29,7 +30,7 @@ func main() {
 			Resource:               resName,
 			TokenCalculateStrategy: flow.Direct,
 			ControlBehavior:        flow.Reject,
-			Threshold:              10,
+			Threshold:              1,
 			StatIntervalInMs:       1000,
 		},
 	})
@@ -39,26 +40,24 @@ func main() {
 	}
 
 	ch := make(chan struct{})
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 2; i++ {
 		go func() {
 			for {
-				e, b := sentinel.Entry(resName, sentinel.WithTrafficType(base.Inbound))
+				e, b := sentinel.Entry(resName, sentinel.WithTrafficType(base.Inbound)) // 一个请求量
 				if b != nil {
-					// Blocked. We could get the block reason from the BlockError.
+					//fmt.Println(time.Now(), b)
+					// 屏蔽。我们可以从BlockError中得到阻塞原因。
 					time.Sleep(time.Duration(rand.Uint64()%10) * time.Millisecond)
 				} else {
-					// Passed, wrap the logic here.
-					time.Sleep(time.Duration(rand.Uint64()%10) * time.Millisecond)
-
-					// Be sure the entry is exited finally.
-					e.Exit()
+					fmt.Println(time.Now(), "pass")
+					//time.Sleep(time.Duration(rand.Uint64()%10) * time.Millisecond)
+					e.Exit() // 确保最终退出该条目。
 				}
-
 			}
 		}()
 	}
 
-	// Simulate a scenario in which flow rules are updated concurrently
+	// 模拟一个并发更新流规则的场景
 	go func() {
 		time.Sleep(time.Second * 10)
 		_, err = flow.LoadRules([]*flow.Rule{
@@ -66,7 +65,7 @@ func main() {
 				Resource:               resName,
 				TokenCalculateStrategy: flow.Direct,
 				ControlBehavior:        flow.Reject,
-				Threshold:              80,
+				Threshold:              2,
 				StatIntervalInMs:       1000,
 			},
 		})

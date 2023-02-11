@@ -1,4 +1,4 @@
-package gin
+package main
 
 import (
 	"github.com/gin-gonic/gin"
@@ -7,7 +7,7 @@ import (
 type (
 	Option  func(*options)
 	options struct {
-		resourceExtract func(*gin.Context) string
+		resourceExtract func(*gin.Context) string // 自定义资源提取器方法路径
 		blockFallback   func(*gin.Context)
 	}
 )
