@@ -16,9 +16,7 @@ import (
 const resName = "example-flow-qps-resource"
 
 func main() {
-	// We should initialize Sentinel first.
 	conf := config.NewDefaultConfig()
-	// for testing, logging output to console
 	conf.Sentinel.Log.Logger = logging.NewConsoleLogger()
 	err := sentinel.InitWithConfig(conf)
 	if err != nil {

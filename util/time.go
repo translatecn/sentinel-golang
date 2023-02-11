@@ -20,7 +20,6 @@ var (
 	_ Ticker = &MockTicker{}
 
 	_ TickerCreator = &RealTickerCreator{}
-	_ TickerCreator = &MockTickerCreator{}
 )
 
 var (
@@ -218,25 +217,13 @@ func (tc *RealTickerCreator) NewTicker(d time.Duration) Ticker {
 	return NewRealTicker(d)
 }
 
-// MockTickerCreator is used create MockTicker which is usually used for testing.
-// MockTickerCreator and MockClock are usually used together.
-type MockTickerCreator struct{}
-
-func NewMockTickerCreator() *MockTickerCreator {
-	return &MockTickerCreator{}
-}
-
-func (tc *MockTickerCreator) NewTicker(d time.Duration) Ticker {
-	return NewMockTicker(d)
-}
-
-// SetClock sets the clock used by util package.
-// In general, no need to set it. It is usually used for testing.
+// SetClock 设置util包使用的时钟。
+// 一般情况下，不需要设置。它通常用于测试。
 func SetClock(c Clock) {
 	currentClock.Store(&clockWrapper{c})
 }
 
-// CurrentClock returns the current clock used by util package.
+// CurrentClock 返回util包使用的当前时钟。
 func CurrentClock() Clock {
 	return currentClock.Load().(*clockWrapper).clock
 }
@@ -281,8 +268,8 @@ func Now() time.Time {
 	return CurrentClock().Now()
 }
 
-// Sleep pauses the current goroutine for at least the duration d.
-// A negative or zero duration causes Sleep to return immediately.
+// Sleep 暂停当前goroutine至少持续时间d。
+// 当持续时间为负或为零时，Sleep会立即返回。
 func Sleep(d time.Duration) {
 	CurrentClock().Sleep(d)
 }

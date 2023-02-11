@@ -37,7 +37,6 @@ func (s *Slot) Check(ctx *base.EntryContext) *base.TokenResult {
 	tcs := getTrafficControllerListFor(res)
 	result := ctx.RuleCheckResult
 
-	// Check rules in order
 	for _, tc := range tcs {
 		if tc == nil {
 			logging.Warn("[FlowSlot Check]Nil traffic controller found", "resourceName", res)
@@ -45,7 +44,6 @@ func (s *Slot) Check(ctx *base.EntryContext) *base.TokenResult {
 		}
 		r := canPassCheck(tc, ctx.StatNode, ctx.Input.BatchCount)
 		if r == nil {
-			// nil means pass
 			continue
 		}
 		if r.Status() == base.ResultStatusBlocked {
@@ -54,7 +52,6 @@ func (s *Slot) Check(ctx *base.EntryContext) *base.TokenResult {
 		if r.Status() == base.ResultStatusShouldWait {
 			if nanosToWait := r.NanosToWait(); nanosToWait > 0 {
 				flowWaitCount.Add(float64(ctx.Input.BatchCount), ctx.Resource.Name())
-				// Handle waiting action.
 				util.Sleep(nanosToWait)
 			}
 			continue

@@ -28,10 +28,8 @@ type StatPrepareSlot interface {
 // 所有检查规则都必须实现此接口。
 type RuleCheckSlot interface {
 	Slot
-	// Check function do some validation
-	// It can break off the slot pipeline
-	// Each TokenResult will return check result
-	// The upper logic will control pipeline according to SlotResult.
+	// Check 检查函数进行一些验证,可以切断槽
+	// 每个TokenResult将返回检查结果,上层逻辑将根据SlotResult控制管道。
 	Check(ctx *EntryContext) *TokenResult
 }
 

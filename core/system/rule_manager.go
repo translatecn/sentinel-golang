@@ -39,8 +39,7 @@ func GetRules() []Rule {
 	return ret
 }
 
-// getRules returns all the rules。Any changes of rules take effect for system module
-// getRules is an internal interface.
+// getRules 返回所有规则。任何规则的变更只对系统模块生效
 func getRules() []*Rule {
 	ruleMapMux.RLock()
 	defer ruleMapMux.RUnlock()
@@ -52,7 +51,7 @@ func getRules() []*Rule {
 	return rules
 }
 
-// LoadRules loads given system rules to the rule manager, while all previous rules will be replaced.
+// LoadRules 将给定的系统规则加载到规则管理器，而之前的所有规则将被替换。
 func LoadRules(rules []*Rule) (bool, error) {
 	updateRuleMux.Lock()
 	defer updateRuleMux.Unlock()
@@ -61,9 +60,7 @@ func LoadRules(rules []*Rule) (bool, error) {
 		logging.Info("[System] Load rules is the same with current rules, so ignore load operation.")
 		return false, nil
 	}
-
 	m := buildRuleMap(rules)
-
 	if err := onRuleUpdate(m); err != nil {
 		logging.Error(err, "Fail to load rules in system.LoadRules()", "rules", rules)
 		return false, err
@@ -115,7 +112,7 @@ func buildRuleMap(rules []*Rule) RuleMap {
 	return m
 }
 
-// IsValidSystemRule determine the system rule is valid or not
+// IsValidSystemRule 判断系统规则是否有效
 func IsValidSystemRule(rule *Rule) error {
 	if rule == nil {
 		return errors.New("nil Rule")

@@ -64,13 +64,12 @@ func NewEmptyEntryContext() *EntryContext {
 	return &EntryContext{}
 }
 
-// The input data of sentinel
+// SentinelInput 哨兵的输入数据
 type SentinelInput struct {
-	BatchCount uint32
-	Flag       int32
-	Args       []interface{}
-	// store some values in this context when calling context in slot.
-	Attachments map[interface{}]interface{}
+	BatchCount  uint32
+	Flag        int32
+	Args        []interface{}
+	Attachments map[interface{}]interface{} // 当调用context in slot时，在此上下文中存储一些值。
 }
 
 func (i *SentinelInput) reset() {
