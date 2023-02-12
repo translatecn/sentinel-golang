@@ -6,16 +6,11 @@ import (
 	"github.com/alibaba/sentinel-golang/util"
 )
 
-// Strategy represents the strategy of circuit breaker.
-// Each strategy is associated with one rule type.
 type Strategy uint32
 
 const (
-	// SlowRequestRatio strategy changes the circuit breaker state based on slow request ratio
-	SlowRequestRatio Strategy = iota
-	// ErrorRatio strategy changes the circuit breaker state based on error request ratio
+	SlowRequestRatio Strategy = iota // 策略根据慢请求比改变断路器状态
 	ErrorRatio
-	// ErrorCount strategy changes the circuit breaker state based on error amount
 	ErrorCount
 )
 
@@ -37,38 +32,18 @@ type Rule struct {
 	// unique id
 	Id string `json:"id,omitempty"`
 	// resource name
-	Resource string   `json:"resource"`
-	Strategy Strategy `json:"strategy"`
-	// RetryTimeoutMs represents recovery timeout (in milliseconds) before the circuit breaker opens.
-	// During the open period, no requests are permitted until the timeout has elapsed.
-	// After that, the circuit breaker will transform to half-open state for trying a few "trial" requests.
-	RetryTimeoutMs uint32 `json:"retryTimeoutMs"`
-	// MinRequestAmount represents the minimum number of requests (in an active statistic time span)
-	// that can trigger circuit breaking.
-	MinRequestAmount uint64 `json:"minRequestAmount"`
-	// StatIntervalMs represents statistic time interval of the internal circuit breaker (in ms).
-	// Currently the statistic interval is collected by sliding window.
-	StatIntervalMs uint32 `json:"statIntervalMs"`
-	// StatSlidingWindowBucketCount represents the bucket count of statistic sliding window.
-	// The statistic will be more precise as the bucket count increases, but the memory cost increases too.
-	// The following must be true — “StatIntervalMs % StatSlidingWindowBucketCount == 0”,
-	// otherwise StatSlidingWindowBucketCount will be replaced by 1.
-	// If it is not set, default value 1 will be used.
-	StatSlidingWindowBucketCount uint32 `json:"statSlidingWindowBucketCount"`
-	// MaxAllowedRtMs indicates that any invocation whose response time exceeds this value (in ms)
-	// will be recorded as a slow request.
-	// MaxAllowedRtMs only takes effect for SlowRequestRatio strategy
-	MaxAllowedRtMs uint64 `json:"maxAllowedRtMs"`
-	// Threshold represents the threshold of circuit breaker.
+	Resource                     string   `json:"resource"`
+	Strategy                     Strategy `json:"strategy"`
+	RetryTimeoutMs               uint32   `json:"retryTimeoutMs"`               // 断路器打开前的恢复 超时时间，单位为毫秒。
+	MinRequestAmount             uint64   `json:"minRequestAmount"`             // 表示最小请求数 (在活动统计时间范围内) 可以触发电路断路。
+	StatIntervalMs               uint32   `json:"statIntervalMs"`               // 表示内部断路器的统计时间间隔，单位为ms。
+	StatSlidingWindowBucketCount uint32   `json:"statSlidingWindowBucketCount"` // 桶的个数
+	MaxAllowedRtMs               uint64   `json:"maxAllowedRtMs"`               // 任何响应时间超过该值的调用(以毫秒为单位) 将被记录为慢速请求。
 	// for SlowRequestRatio, it represents the max slow request ratio
 	// for ErrorRatio, it represents the max error request ratio
 	// for ErrorCount, it represents the max error request count
 	Threshold float64 `json:"threshold"`
-	//ProbeNum is number of probes required when the circuit breaker is half-open.
-	//when the probe num are set  and circuit breaker in the half-open state.
-	//if err occurs during the probe, the circuit breaker is opened immediately.
-	//otherwise,the circuit breaker is closed only after the number of probes is reached
-	ProbeNum uint64 `json:"probeNum"`
+	ProbeNum  uint64  `json:"probeNum"` // 探测数量
 }
 
 func (r *Rule) String() string {

@@ -38,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 	ch := make(chan struct{})
-	// Register a state change listener so that we could observer the state change of the internal circuit breaker.
+	// 注册一个状态变化监听器，这样我们就可以观察到内部断路器的状态变化。
 	circuitbreaker.RegisterStateChangeListeners(&stateChangeTestListener{})
 
 	_, err = circuitbreaker.LoadRules([]*circuitbreaker.Rule{
@@ -46,11 +46,11 @@ func main() {
 		{
 			Resource:                     "abc",
 			Strategy:                     circuitbreaker.ErrorCount,
-			RetryTimeoutMs:               3000,
-			MinRequestAmount:             10,
-			StatIntervalMs:               5000,
-			StatSlidingWindowBucketCount: 10,
-			Threshold:                    50,
+			RetryTimeoutMs:               1000, // 打开状态，一定时间后转换为半打开
+			MinRequestAmount:             1,    // 请求数超10 才启用断路器
+			StatIntervalMs:               5000, // 采集5s内的数据
+			StatSlidingWindowBucketCount: 10,   // 分割成10个桶
+			Threshold:                    5,    // 错误数超过5
 		},
 	})
 	if err != nil {
@@ -65,8 +65,8 @@ func main() {
 				// g1 blocked
 				time.Sleep(time.Duration(rand.Uint64()%20) * time.Millisecond)
 			} else {
-				if rand.Uint64()%20 > 9 {
-					// Record current invocation as error.
+				if rand.Uint64()%20 > 1 {
+					// 将当前调用记录为错误
 					sentinel.TraceError(e, errors.New("biz error"))
 				}
 				// g1 passed

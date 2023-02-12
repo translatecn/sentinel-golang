@@ -22,14 +22,14 @@ func BuildDefaultSlotChain() *base.SlotChain {
 	sc.AddStatPrepareSlot(stat.DefaultResourceNodePrepareSlot)
 
 	sc.AddRuleCheckSlot(system.DefaultAdaptiveSlot)
-	sc.AddRuleCheckSlot(flow.DefaultSlot)      // 流量控制
-	sc.AddRuleCheckSlot(isolation.DefaultSlot) // 并发控制
-	sc.AddRuleCheckSlot(hotspot.DefaultSlot)
-	sc.AddRuleCheckSlot(circuitbreaker.DefaultSlot)
+	sc.AddRuleCheckSlot(flow.DefaultSlot)           // 流量控制
+	sc.AddRuleCheckSlot(isolation.DefaultSlot)      // 并发控制
+	sc.AddRuleCheckSlot(hotspot.DefaultSlot)        // 热点
+	sc.AddRuleCheckSlot(circuitbreaker.DefaultSlot) // 断路器
 
 	sc.AddStatSlot(stat.DefaultSlot)
-	sc.AddStatSlot(flow.DefaultStandaloneStatSlot) // 流量控制
-	sc.AddStatSlot(hotspot.DefaultConcurrencyStatSlot)
-	sc.AddStatSlot(circuitbreaker.DefaultMetricStatSlot)
+	sc.AddStatSlot(flow.DefaultStandaloneStatSlot)       // 流量控制
+	sc.AddStatSlot(hotspot.DefaultConcurrencyStatSlot)   // 热点
+	sc.AddStatSlot(circuitbreaker.DefaultMetricStatSlot) // 断路器
 	return sc
 }

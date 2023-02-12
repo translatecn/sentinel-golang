@@ -12,8 +12,8 @@ var (
 	DefaultMetricStatSlot = &MetricStatSlot{}
 )
 
-// MetricStatSlot records metrics for circuit breaker on invocation completed.
-// MetricStatSlot must be filled into slot chain if circuit breaker is alive.
+// MetricStatSlot 记录断路器调用完成时的度量。
+// 如果断路器活，则必须将MetricStatSlot填充到槽链中。
 type MetricStatSlot struct {
 }
 
@@ -22,12 +22,10 @@ func (s *MetricStatSlot) Order() uint32 {
 }
 
 func (c *MetricStatSlot) OnEntryPassed(_ *base.EntryContext) {
-	// Do nothing
 	return
 }
 
 func (c *MetricStatSlot) OnEntryBlocked(_ *base.EntryContext, _ *base.BlockError) {
-	// Do nothing
 	return
 }
 

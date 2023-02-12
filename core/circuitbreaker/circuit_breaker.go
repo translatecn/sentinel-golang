@@ -1,11 +1,9 @@
 package circuitbreaker
 
 import (
-	"reflect"
 	"sync/atomic"
 
 	"github.com/alibaba/sentinel-golang/core/base"
-	sbase "github.com/alibaba/sentinel-golang/core/stat/base"
 	metric_exporter "github.com/alibaba/sentinel-golang/exporter/metric"
 	"github.com/alibaba/sentinel-golang/logging"
 	"github.com/alibaba/sentinel-golang/util"
@@ -18,11 +16,11 @@ import (
 //					+-----------------------------------------------------------------------+
 //					|                                                                       |
 //					|                                                                       v
-//			+----------------+                   +----------------+      Probe      +----------------+
+//			+----------------+                   +----------------+      探针      +----------------+
 //			|                |                   |                |<----------------|                |
-//			|                |   Probe succeed   |                |                 |                |
+//			|                |   探针 succeed     |                |                 |                |
 //			|     Closed     |<------------------|    HalfOpen    |                 |      Open      |
-//			|                |                   |                |   Probe failed  |                |
+//			|                |                   |                |   探针 failed  |                |
 //			|                |                   |                +---------------->|                |
 //			+----------------+                   +----------------+                 +----------------+
 type State int32
@@ -76,38 +74,20 @@ func (s *State) cas(expect State, update State) bool {
 	return atomic.CompareAndSwapInt32((*int32)(s), int32(expect), int32(update))
 }
 
-// StateChangeListener listens on the circuit breaker state change event
 type StateChangeListener interface {
-	// OnTransformToClosed is triggered when circuit breaker state transformed to Closed.
-	// Argument rule is copy from circuit breaker's rule, any changes of rule don't take effect for circuit breaker
-	// Copying rule has a performance penalty and avoids invalid listeners as much as possible
-	OnTransformToClosed(prev State, rule Rule)
-
-	// OnTransformToOpen is triggered when circuit breaker state transformed to Open.
-	// The "snapshot" indicates the triggered value when the transformation occurs.
-	// Argument rule is copy from circuit breaker's rule, any changes of rule don't take effect for circuit breaker
-	// Copying rule has a performance penalty and avoids invalid listeners as much as possible
-	OnTransformToOpen(prev State, rule Rule, snapshot interface{})
-
-	// OnTransformToHalfOpen is triggered when circuit breaker state transformed to HalfOpen.
-	// Argument rule is copy from circuit breaker's rule, any changes of rule don't take effect for circuit breaker
-	// Copying rule has a performance penalty and avoids invalid listeners as much as possible
-	OnTransformToHalfOpen(prev State, rule Rule)
+	OnTransformToClosed(prev State, rule Rule)                     // 关闭
+	OnTransformToOpen(prev State, rule Rule, snapshot interface{}) // 打开了
+	OnTransformToHalfOpen(prev State, rule Rule)                   // -> 半开
 }
 
-// CircuitBreaker is the basic interface of circuit breaker
 type CircuitBreaker interface {
-	// BoundRule returns the associated circuit breaking rule.
-	BoundRule() *Rule
-	// BoundStat returns the associated statistic data structure.
-	BoundStat() interface{}
-	// TryPass acquires permission of an invocation only if it is available at the time of invocation.
-	TryPass(ctx *base.EntryContext) bool
-	// CurrentState returns current state of the circuit breaker.
-	CurrentState() State
-	// OnRequestComplete record a completed request with the given response time as well as error (if present),
-	// and handle state transformation of the circuit breaker.
-	// OnRequestComplete is called only when a passed invocation finished.
+	BoundRule() *Rule                    // 返回相关的断路规则。
+	BoundStat() interface{}              // 返回相关的统计数据结构。
+	TryPass(ctx *base.EntryContext) bool // 仅当调用时调用可用时才获得该调用的权限。
+	CurrentState() State                 // 返回断路器的当前状态。
+	// OnRequestComplete 记录一个已完成的请求，具有给定的响应时间和错误(如果存在)，
+	// 和断路器的手柄状态转换。
+	// OnRequestComplete只在传递的调用结束时调用。
 	OnRequestComplete(rtt uint64, err error)
 }
 
@@ -118,15 +98,11 @@ type circuitBreakerBase struct {
 	// retryTimeoutMs represents recovery timeout (in milliseconds) before the circuit breaker opens.
 	// During the open period, no requests are permitted until the timeout has elapsed.
 	// After that, the circuit breaker will transform to half-open state for trying a few "trial" requests.
-	retryTimeoutMs uint32
-	// nextRetryTimestampMs is the time circuit breaker could probe
-	nextRetryTimestampMs uint64
-	// probeNumber is the number of probe requests that are allowed to pass when the circuit breaker is half open.
-	probeNumber uint64
-	// curProbeNumber is the real-time probe number.
-	curProbeNumber uint64
-	// state is the state machine of circuit breaker
-	state *State
+	retryTimeoutMs       uint32
+	nextRetryTimestampMs uint64 // 下一次进行探测的时间
+	probeNumber          uint64 // 当断路器半开时允许通过的探测请求数。
+	curProbeNumber       uint64 // 当前探测数量
+	state                *State // 当前断路器的数量
 }
 
 func (b *circuitBreakerBase) BoundRule() *Rule {
@@ -145,31 +121,31 @@ func (b *circuitBreakerBase) updateNextRetryTimestamp() {
 	atomic.StoreUint64(&b.nextRetryTimestampMs, util.CurrentTimeMillis()+uint64(b.retryTimeoutMs))
 }
 
+// 添加当前探测数量
 func (b *circuitBreakerBase) addCurProbeNum() {
 	atomic.AddUint64(&b.curProbeNumber, 1)
 }
 
+// 重置当前探测数量
 func (b *circuitBreakerBase) resetCurProbeNum() {
 	atomic.StoreUint64(&b.curProbeNumber, 0)
 }
 
-// fromClosedToOpen updates circuit breaker state machine from closed to open.
-// Return true only if current goroutine successfully accomplished the transformation.
+// fromClosedToOpen 更新断路器状态机由闭合状态变为开启状态。
+// 仅当当前goroutine成功完成转换时返回true。
 func (b *circuitBreakerBase) fromClosedToOpen(snapshot interface{}) bool {
 	if b.state.cas(Closed, Open) {
 		b.updateNextRetryTimestamp()
 		for _, listener := range stateChangeListeners {
 			listener.OnTransformToOpen(Closed, *b.rule, snapshot)
 		}
-
 		stateChangedCounter.Add(float64(1), b.BoundRule().Resource, "Closed", "Open")
 		return true
 	}
 	return false
 }
 
-// fromOpenToHalfOpen updates circuit breaker state machine from open to half-open.
-// Return true only if current goroutine successfully accomplished the transformation.
+// fromOpenToHalfOpen 将断路器状态机从开到半开。
 func (b *circuitBreakerBase) fromOpenToHalfOpen(ctx *base.EntryContext) bool {
 	if b.state.cas(Open, HalfOpen) {
 		for _, listener := range stateChangeListeners {
@@ -199,8 +175,8 @@ func (b *circuitBreakerBase) fromOpenToHalfOpen(ctx *base.EntryContext) bool {
 	return false
 }
 
-// fromHalfOpenToOpen updates circuit breaker state machine from half-open to open.
-// Return true only if current goroutine successfully accomplished the transformation.
+// fromHalfOpenToOpen 将断路器状态机从半开状态更新为开状态。
+// 仅当当前goroutine成功完成转换时返回true。
 func (b *circuitBreakerBase) fromHalfOpenToOpen(snapshot interface{}) bool {
 	if b.state.cas(HalfOpen, Open) {
 		b.resetCurProbeNum()
@@ -208,19 +184,18 @@ func (b *circuitBreakerBase) fromHalfOpenToOpen(snapshot interface{}) bool {
 		for _, listener := range stateChangeListeners {
 			listener.OnTransformToOpen(HalfOpen, *b.rule, snapshot)
 		}
-
 		stateChangedCounter.Add(float64(1), b.BoundRule().Resource, "HalfOpen", "Open")
 		return true
 	}
 	return false
 }
 
-// fromHalfOpenToOpen updates circuit breaker state machine from half-open to closed
-// Return true only if current goroutine successfully accomplished the transformation.
+// fromHalfOpenToOpen 将断路器状态机从半开状态更新为闭合状态
+// 仅当当前goroutine成功完成转换时返回true。
 func (b *circuitBreakerBase) fromHalfOpenToClosed() bool {
 	if b.state.cas(HalfOpen, Closed) {
 		b.resetCurProbeNum()
-		for _, listener := range stateChangeListeners {
+		for _, listener := range stateChangeListeners { // 触发所有监听者
 			listener.OnTransformToClosed(HalfOpen, *b.rule)
 		}
 
@@ -228,495 +203,4 @@ func (b *circuitBreakerBase) fromHalfOpenToClosed() bool {
 		return true
 	}
 	return false
-}
-
-// ================================= slowRtCircuitBreaker ====================================
-type slowRtCircuitBreaker struct {
-	circuitBreakerBase
-	stat                *slowRequestLeapArray
-	maxAllowedRt        uint64
-	maxSlowRequestRatio float64
-	minRequestAmount    uint64
-}
-
-func newSlowRtCircuitBreakerWithStat(r *Rule, stat *slowRequestLeapArray) *slowRtCircuitBreaker {
-	return &slowRtCircuitBreaker{
-		circuitBreakerBase: circuitBreakerBase{
-			rule:                 r,
-			retryTimeoutMs:       r.RetryTimeoutMs,
-			nextRetryTimestampMs: 0,
-			state:                newState(),
-			probeNumber:          r.ProbeNum,
-		},
-		stat:                stat,
-		maxAllowedRt:        r.MaxAllowedRtMs,
-		maxSlowRequestRatio: r.Threshold,
-		minRequestAmount:    r.MinRequestAmount,
-	}
-}
-
-func newSlowRtCircuitBreaker(r *Rule) (*slowRtCircuitBreaker, error) {
-	interval := r.StatIntervalMs
-	bucketCount := getRuleStatSlidingWindowBucketCount(r)
-	stat := &slowRequestLeapArray{}
-	leapArray, err := sbase.NewLeapArray(bucketCount, interval, stat)
-	if err != nil {
-		return nil, err
-	}
-	stat.data = leapArray
-
-	return newSlowRtCircuitBreakerWithStat(r, stat), nil
-}
-
-func (b *slowRtCircuitBreaker) BoundStat() interface{} {
-	return b.stat
-}
-
-// TryPass checks circuit breaker based on state machine of circuit breaker.
-func (b *slowRtCircuitBreaker) TryPass(ctx *base.EntryContext) bool {
-	curStatus := b.CurrentState()
-	if curStatus == Closed {
-		return true
-	} else if curStatus == Open {
-		// switch state to half-open to probe if retry timeout
-		if b.retryTimeoutArrived() && b.fromOpenToHalfOpen(ctx) {
-			return true
-		}
-	} else if curStatus == HalfOpen && b.probeNumber > 0 {
-		return true
-	}
-	return false
-}
-
-func (b *slowRtCircuitBreaker) OnRequestComplete(rt uint64, _ error) {
-	// add slow and add total
-	metricStat := b.stat
-	counter, curErr := metricStat.currentCounter()
-	if curErr != nil {
-		logging.Error(curErr, "Fail to get current counter in slowRtCircuitBreaker#OnRequestComplete().",
-			"rule", b.rule)
-		return
-	}
-	if rt > b.maxAllowedRt {
-		atomic.AddUint64(&counter.slowCount, 1)
-	}
-	atomic.AddUint64(&counter.totalCount, 1)
-
-	slowCount := uint64(0)
-	totalCount := uint64(0)
-	counters := metricStat.allCounter()
-	for _, c := range counters {
-		slowCount += atomic.LoadUint64(&c.slowCount)
-		totalCount += atomic.LoadUint64(&c.totalCount)
-	}
-	slowRatio := float64(slowCount) / float64(totalCount)
-
-	// handleStateChange
-	curStatus := b.CurrentState()
-	if curStatus == Open {
-		return
-	} else if curStatus == HalfOpen {
-		if rt > b.maxAllowedRt {
-			// fail to probe
-			b.fromHalfOpenToOpen(1.0)
-		} else {
-			b.addCurProbeNum()
-			if b.probeNumber == 0 || atomic.LoadUint64(&b.curProbeNumber) >= b.probeNumber {
-				// succeed to probe
-				b.fromHalfOpenToClosed()
-				b.resetMetric()
-			}
-		}
-		return
-	}
-
-	// current state is CLOSED
-	if totalCount < b.minRequestAmount {
-		return
-	}
-
-	if slowRatio > b.maxSlowRequestRatio || util.Float64Equals(slowRatio, b.maxSlowRequestRatio) {
-		curStatus = b.CurrentState()
-		switch curStatus {
-		case Closed:
-			b.fromClosedToOpen(slowRatio)
-		case HalfOpen:
-			b.fromHalfOpenToOpen(slowRatio)
-		default:
-		}
-	}
-	return
-}
-
-func (b *slowRtCircuitBreaker) resetMetric() {
-	for _, c := range b.stat.allCounter() {
-		c.reset()
-	}
-}
-
-type slowRequestCounter struct {
-	slowCount  uint64
-	totalCount uint64
-}
-
-func (c *slowRequestCounter) reset() {
-	atomic.StoreUint64(&c.slowCount, 0)
-	atomic.StoreUint64(&c.totalCount, 0)
-}
-
-type slowRequestLeapArray struct {
-	data *sbase.LeapArray
-}
-
-func (s *slowRequestLeapArray) NewEmptyBucket() interface{} {
-	return &slowRequestCounter{
-		slowCount:  0,
-		totalCount: 0,
-	}
-}
-
-func (s *slowRequestLeapArray) ResetBucketTo(bw *sbase.BucketWrap, startTime uint64) *sbase.BucketWrap {
-	atomic.StoreUint64(&bw.BucketStart, startTime)
-	bw.Value.Store(&slowRequestCounter{
-		slowCount:  0,
-		totalCount: 0,
-	})
-	return bw
-}
-
-func (s *slowRequestLeapArray) currentCounter() (*slowRequestCounter, error) {
-	curBucket, err := s.data.CurrentBucket(s)
-	if err != nil {
-		return nil, err
-	}
-	if curBucket == nil {
-		return nil, errors.New("nil BucketWrap")
-	}
-	mb := curBucket.Value.Load()
-	if mb == nil {
-		return nil, errors.New("nil slowRequestCounter")
-	}
-	counter, ok := mb.(*slowRequestCounter)
-	if !ok {
-		return nil, errors.Errorf("bucket fail to do type assert, expect: *slowRequestCounter, in fact: %s", reflect.TypeOf(mb).Name())
-	}
-	return counter, nil
-}
-
-func (s *slowRequestLeapArray) allCounter() []*slowRequestCounter {
-	buckets := s.data.Values()
-	ret := make([]*slowRequestCounter, 0, len(buckets))
-	for _, b := range buckets {
-		mb := b.Value.Load()
-		if mb == nil {
-			logging.Error(errors.New("current bucket atomic Value is nil"), "Current bucket atomic Value is nil in slowRequestLeapArray.allCounter()")
-			continue
-		}
-		counter, ok := mb.(*slowRequestCounter)
-		if !ok {
-			logging.Error(errors.New("bucket data type error"), "Bucket data type error in slowRequestLeapArray.allCounter()", "expect type", "*slowRequestCounter", "actual type", reflect.TypeOf(mb).Name())
-			continue
-		}
-		ret = append(ret, counter)
-	}
-	return ret
-}
-
-// ================================= errorRatioCircuitBreaker ====================================
-type errorRatioCircuitBreaker struct {
-	circuitBreakerBase
-	minRequestAmount    uint64
-	errorRatioThreshold float64
-
-	stat *errorCounterLeapArray
-}
-
-func newErrorRatioCircuitBreakerWithStat(r *Rule, stat *errorCounterLeapArray) *errorRatioCircuitBreaker {
-	return &errorRatioCircuitBreaker{
-		circuitBreakerBase: circuitBreakerBase{
-			rule:                 r,
-			retryTimeoutMs:       r.RetryTimeoutMs,
-			nextRetryTimestampMs: 0,
-			state:                newState(),
-			probeNumber:          r.ProbeNum,
-		},
-		minRequestAmount:    r.MinRequestAmount,
-		errorRatioThreshold: r.Threshold,
-		stat:                stat,
-	}
-}
-
-func newErrorRatioCircuitBreaker(r *Rule) (*errorRatioCircuitBreaker, error) {
-	interval := r.StatIntervalMs
-	bucketCount := getRuleStatSlidingWindowBucketCount(r)
-	stat := &errorCounterLeapArray{}
-	leapArray, err := sbase.NewLeapArray(bucketCount, interval, stat)
-	if err != nil {
-		return nil, err
-	}
-	stat.data = leapArray
-	return newErrorRatioCircuitBreakerWithStat(r, stat), nil
-}
-
-func (b *errorRatioCircuitBreaker) BoundStat() interface{} {
-	return b.stat
-}
-
-func (b *errorRatioCircuitBreaker) TryPass(ctx *base.EntryContext) bool {
-	curStatus := b.CurrentState()
-	if curStatus == Closed {
-		return true
-	} else if curStatus == Open {
-		// switch state to half-open to probe if retry timeout
-		if b.retryTimeoutArrived() && b.fromOpenToHalfOpen(ctx) {
-			return true
-		}
-	} else if curStatus == HalfOpen && b.probeNumber > 0 {
-		return true
-	}
-	return false
-}
-
-func (b *errorRatioCircuitBreaker) OnRequestComplete(_ uint64, err error) {
-	metricStat := b.stat
-	counter, curErr := metricStat.currentCounter()
-	if curErr != nil {
-		logging.Error(curErr, "Fail to get current counter in errorRatioCircuitBreaker#OnRequestComplete().",
-			"rule", b.rule)
-		return
-	}
-	if err != nil {
-		atomic.AddUint64(&counter.errorCount, 1)
-	}
-	atomic.AddUint64(&counter.totalCount, 1)
-
-	errorCount := uint64(0)
-	totalCount := uint64(0)
-	counters := metricStat.allCounter()
-	for _, c := range counters {
-		errorCount += atomic.LoadUint64(&c.errorCount)
-		totalCount += atomic.LoadUint64(&c.totalCount)
-	}
-	errorRatio := float64(errorCount) / float64(totalCount)
-
-	// handleStateChangeWhenThresholdExceeded
-	curStatus := b.CurrentState()
-	if curStatus == Open {
-		return
-	}
-	if curStatus == HalfOpen {
-		if err == nil {
-			b.addCurProbeNum()
-			if b.probeNumber == 0 || atomic.LoadUint64(&b.curProbeNumber) >= b.probeNumber {
-				b.fromHalfOpenToClosed()
-				b.resetMetric()
-			}
-		} else {
-			b.fromHalfOpenToOpen(1.0)
-		}
-		return
-	}
-
-	// current state is CLOSED
-	if totalCount < b.minRequestAmount {
-		return
-	}
-	if errorRatio > b.errorRatioThreshold || util.Float64Equals(errorRatio, b.errorRatioThreshold) {
-		curStatus = b.CurrentState()
-		switch curStatus {
-		case Closed:
-			b.fromClosedToOpen(errorRatio)
-		case HalfOpen:
-			b.fromHalfOpenToOpen(errorRatio)
-		default:
-		}
-	}
-}
-
-func (b *errorRatioCircuitBreaker) resetMetric() {
-	for _, c := range b.stat.allCounter() {
-		c.reset()
-	}
-}
-
-type errorCounter struct {
-	errorCount uint64
-	totalCount uint64
-}
-
-func (c *errorCounter) reset() {
-	atomic.StoreUint64(&c.errorCount, 0)
-	atomic.StoreUint64(&c.totalCount, 0)
-}
-
-type errorCounterLeapArray struct {
-	data *sbase.LeapArray
-}
-
-func (s *errorCounterLeapArray) NewEmptyBucket() interface{} {
-	return &errorCounter{
-		errorCount: 0,
-		totalCount: 0,
-	}
-}
-
-func (s *errorCounterLeapArray) ResetBucketTo(bw *sbase.BucketWrap, startTime uint64) *sbase.BucketWrap {
-	atomic.StoreUint64(&bw.BucketStart, startTime)
-	bw.Value.Store(&errorCounter{
-		errorCount: 0,
-		totalCount: 0,
-	})
-	return bw
-}
-
-func (s *errorCounterLeapArray) currentCounter() (*errorCounter, error) {
-	curBucket, err := s.data.CurrentBucket(s)
-	if err != nil {
-		return nil, err
-	}
-	if curBucket == nil {
-		return nil, errors.New("nil BucketWrap")
-	}
-	mb := curBucket.Value.Load()
-	if mb == nil {
-		return nil, errors.New("nil errorCounter")
-	}
-	counter, ok := mb.(*errorCounter)
-	if !ok {
-		return nil, errors.Errorf("bucket fail to do type assert, expect: *errorCounter, in fact: %s", reflect.TypeOf(mb).Name())
-	}
-	return counter, nil
-}
-
-func (s *errorCounterLeapArray) allCounter() []*errorCounter {
-	buckets := s.data.Values()
-	ret := make([]*errorCounter, 0, len(buckets))
-	for _, b := range buckets {
-		mb := b.Value.Load()
-		if mb == nil {
-			logging.Error(errors.New("current bucket atomic Value is nil"), "Current bucket atomic Value is nil in errorCounterLeapArray.allCounter()")
-			continue
-		}
-		counter, ok := mb.(*errorCounter)
-		if !ok {
-			logging.Error(errors.New("bucket data type error"), "Bucket data type error in errorCounterLeapArray.allCounter()", "expect type", "*errorCounter", "actual type", reflect.TypeOf(mb).Name())
-			continue
-		}
-		ret = append(ret, counter)
-	}
-	return ret
-}
-
-// ================================= errorCountCircuitBreaker ====================================
-type errorCountCircuitBreaker struct {
-	circuitBreakerBase
-	minRequestAmount    uint64
-	errorCountThreshold uint64
-
-	stat *errorCounterLeapArray
-}
-
-func newErrorCountCircuitBreakerWithStat(r *Rule, stat *errorCounterLeapArray) *errorCountCircuitBreaker {
-	return &errorCountCircuitBreaker{
-		circuitBreakerBase: circuitBreakerBase{
-			rule:                 r,
-			retryTimeoutMs:       r.RetryTimeoutMs,
-			nextRetryTimestampMs: 0,
-			state:                newState(),
-			probeNumber:          r.ProbeNum,
-		},
-		minRequestAmount:    r.MinRequestAmount,
-		errorCountThreshold: uint64(r.Threshold),
-		stat:                stat,
-	}
-}
-
-func newErrorCountCircuitBreaker(r *Rule) (*errorCountCircuitBreaker, error) {
-	interval := r.StatIntervalMs
-	bucketCount := getRuleStatSlidingWindowBucketCount(r)
-	stat := &errorCounterLeapArray{}
-	leapArray, err := sbase.NewLeapArray(bucketCount, interval, stat)
-	if err != nil {
-		return nil, err
-	}
-	stat.data = leapArray
-	return newErrorCountCircuitBreakerWithStat(r, stat), nil
-}
-
-func (b *errorCountCircuitBreaker) BoundStat() interface{} {
-	return b.stat
-}
-
-func (b *errorCountCircuitBreaker) TryPass(ctx *base.EntryContext) bool {
-	curStatus := b.CurrentState()
-	if curStatus == Closed {
-		return true
-	} else if curStatus == Open {
-		// switch state to half-open to probe if retry timeout
-		if b.retryTimeoutArrived() && b.fromOpenToHalfOpen(ctx) {
-			return true
-		}
-	} else if curStatus == HalfOpen && b.probeNumber > 0 {
-		return true
-	}
-	return false
-}
-
-func (b *errorCountCircuitBreaker) OnRequestComplete(_ uint64, err error) {
-	metricStat := b.stat
-	counter, curErr := metricStat.currentCounter()
-	if curErr != nil {
-		logging.Error(curErr, "Fail to get current counter in errorCountCircuitBreaker#OnRequestComplete().",
-			"rule", b.rule)
-		return
-	}
-	if err != nil {
-		atomic.AddUint64(&counter.errorCount, 1)
-	}
-	atomic.AddUint64(&counter.totalCount, 1)
-
-	errorCount := uint64(0)
-	totalCount := uint64(0)
-	counters := metricStat.allCounter()
-	for _, c := range counters {
-		errorCount += atomic.LoadUint64(&c.errorCount)
-		totalCount += atomic.LoadUint64(&c.totalCount)
-	}
-	// handleStateChangeWhenThresholdExceeded
-	curStatus := b.CurrentState()
-	if curStatus == Open {
-		return
-	}
-	if curStatus == HalfOpen {
-		if err == nil {
-			b.addCurProbeNum()
-			if b.probeNumber == 0 || atomic.LoadUint64(&b.curProbeNumber) >= b.probeNumber {
-				b.fromHalfOpenToClosed()
-				b.resetMetric()
-			}
-		} else {
-			b.fromHalfOpenToOpen(1)
-		}
-		return
-	}
-	// current state is CLOSED
-	if totalCount < b.minRequestAmount {
-		return
-	}
-	if errorCount >= b.errorCountThreshold {
-		curStatus = b.CurrentState()
-		switch curStatus {
-		case Closed:
-			b.fromClosedToOpen(errorCount)
-		case HalfOpen:
-			b.fromHalfOpenToOpen(errorCount)
-		default:
-		}
-	}
-}
-
-func (b *errorCountCircuitBreaker) resetMetric() {
-	for _, c := range b.stat.allCounter() {
-		c.reset()
-	}
 }

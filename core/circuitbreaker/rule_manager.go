@@ -13,14 +13,12 @@ import (
 type CircuitBreakerGenFunc func(r *Rule, reuseStat interface{}) (CircuitBreaker, error)
 
 var (
-	cbGenFuncMap = make(map[Strategy]CircuitBreakerGenFunc, 4)
-
-	breakerRules  = make(map[string][]*Rule)
-	breakers      = make(map[string][]CircuitBreaker)
-	updateMux     = new(sync.RWMutex)
-	currentRules  = make(map[string][]*Rule, 0)
-	updateRuleMux = new(sync.Mutex)
-
+	cbGenFuncMap         = make(map[Strategy]CircuitBreakerGenFunc, 4)
+	breakerRules         = make(map[string][]*Rule)
+	breakers             = make(map[string][]CircuitBreaker)
+	updateMux            = new(sync.RWMutex)
+	currentRules         = make(map[string][]*Rule, 0)
+	updateRuleMux        = new(sync.Mutex)
 	stateChangeListeners = make([]StateChangeListener, 0)
 )
 
