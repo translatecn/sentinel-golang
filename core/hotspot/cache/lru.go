@@ -2,28 +2,24 @@ package cache
 
 import (
 	"container/list"
-
 	"github.com/pkg/errors"
 )
 
-// EvictCallback is used to get a callback when a cache entry is evicted
-type EvictCallback func(key interface{}, value interface{})
+type EvictCallback func(key interface{}, value interface{}) // 驱逐回调
 
-// LRU implements a non-thread safe fixed size LRU cache
+// LRU 非线程安全
 type LRU struct {
 	size      int
 	evictList *list.List
-	items     map[interface{}]*list.Element
+	items     map[interface{}]*list.Element // value 是一个指针
 	onEvict   EvictCallback
 }
 
-// entry is used to hold a value in the evictList
 type entry struct {
 	key   interface{}
 	value interface{}
 }
 
-// NewLRU constructs an LRU of the given size
 func NewLRU(size int, onEvict EvictCallback) (*LRU, error) {
 	if size <= 0 {
 		return nil, errors.New("must provide a positive size")
@@ -37,7 +33,7 @@ func NewLRU(size int, onEvict EvictCallback) (*LRU, error) {
 	return c, nil
 }
 
-// Purge is used to completely clear the cache.
+// Purge 用于完全清除缓存。
 func (c *LRU) Purge() {
 	for k, v := range c.items {
 		if c.onEvict != nil {
@@ -103,8 +99,6 @@ func (c *LRU) Get(key interface{}) (value interface{}, isFound bool) {
 	return
 }
 
-// Contains checks if a key is in the cache, without updating the recent-ness
-// or deleting it for being stale.
 func (c *LRU) Contains(key interface{}) (ok bool) {
 	_, ok = c.items[key]
 	return ok
@@ -120,8 +114,6 @@ func (c *LRU) Peek(key interface{}) (value interface{}, isFound bool) {
 	return nil, isFound
 }
 
-// Remove removes the provided key from the cache, returning if the
-// key was contained.
 func (c *LRU) Remove(key interface{}) (isFound bool) {
 	var ent *list.Element
 	if ent, isFound = c.items[key]; isFound {
@@ -131,7 +123,6 @@ func (c *LRU) Remove(key interface{}) (isFound bool) {
 	return
 }
 
-// RemoveOldest removes the oldest item from the cache.
 func (c *LRU) RemoveOldest() (key interface{}, value interface{}, ok bool) {
 	ent := c.evictList.Back()
 	if ent != nil {
@@ -142,7 +133,6 @@ func (c *LRU) RemoveOldest() (key interface{}, value interface{}, ok bool) {
 	return nil, nil, false
 }
 
-// GetOldest returns the oldest entry
 func (c *LRU) GetOldest() (key interface{}, value interface{}, ok bool) {
 	ent := c.evictList.Back()
 	if ent != nil {
@@ -152,7 +142,6 @@ func (c *LRU) GetOldest() (key interface{}, value interface{}, ok bool) {
 	return nil, nil, false
 }
 
-// Keys returns a slice of the keys in the cache, from oldest to newest.
 func (c *LRU) Keys() []interface{} {
 	keys := make([]interface{}, len(c.items))
 	i := 0
@@ -163,12 +152,10 @@ func (c *LRU) Keys() []interface{} {
 	return keys
 }
 
-// Len returns the number of items in the cache.
 func (c *LRU) Len() int {
 	return c.evictList.Len()
 }
 
-// Resize changes the cache size.
 func (c *LRU) Resize(size int) (evicted int) {
 	diff := c.Len() - size
 	if diff < 0 {
@@ -181,7 +168,6 @@ func (c *LRU) Resize(size int) (evicted int) {
 	return diff
 }
 
-// removeOldest removes the oldest item from the cache.
 func (c *LRU) removeOldest() {
 	ent := c.evictList.Back()
 	if ent != nil {
@@ -189,7 +175,6 @@ func (c *LRU) removeOldest() {
 	}
 }
 
-// removeElement is used to remove a given list element from the cache
 func (c *LRU) removeElement(e *list.Element) {
 	c.evictList.Remove(e)
 	if e.Value == nil {

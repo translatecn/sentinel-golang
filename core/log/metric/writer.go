@@ -249,7 +249,6 @@ func (d *DefaultMetricLogWriter) closeCurAndNewFile(filename string) error {
 }
 
 func (d *DefaultMetricLogWriter) initialize() error {
-	// Create the dir if not exists.
 	err := util.CreateDirIfNotExists(d.baseDir)
 	if err != nil {
 		return err

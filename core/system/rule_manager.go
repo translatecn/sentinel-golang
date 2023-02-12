@@ -39,7 +39,7 @@ func GetRules() []Rule {
 	return ret
 }
 
-// getRules 返回所有规则。任何规则的变更只对系统模块生效
+// getRules 返回所有规则.任何规则的变更只对系统模块生效
 func getRules() []*Rule {
 	ruleMapMux.RLock()
 	defer ruleMapMux.RUnlock()
@@ -51,7 +51,7 @@ func getRules() []*Rule {
 	return rules
 }
 
-// LoadRules 将给定的系统规则加载到规则管理器，而之前的所有规则将被替换。
+// LoadRules 将给定的系统规则加载到规则管理器，而之前的所有规则将被替换.
 func LoadRules(rules []*Rule) (bool, error) {
 	updateRuleMux.Lock()
 	defer updateRuleMux.Unlock()

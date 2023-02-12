@@ -10,12 +10,11 @@ import (
 )
 
 const (
-	BlockMsgQueueing = "flow throttling check blocked, estimated queueing time exceeds max queueing time"
-
+	BlockMsgQueueing    = "flow throttling check blocked, estimated queueing time exceeds max queueing time"
 	MillisToNanosOffset = int64(time.Millisecond / time.Nanosecond)
 )
 
-// ThrottlingChecker limits the time interval between two requests.
+// ThrottlingChecker 限制两个请求之间的时间间隔。
 type ThrottlingChecker struct {
 	owner             *TrafficShapingController
 	maxQueueingTimeNs int64
@@ -43,7 +42,7 @@ func (c *ThrottlingChecker) BoundOwner() *TrafficShapingController {
 
 // DoCheck 匀速排队
 func (c *ThrottlingChecker) DoCheck(_ base.StatNode, batchCount uint32, threshold float64) *base.TokenResult {
-	// Pass when batch count is less or equal than 0.
+	// 批处理计数小于或等于0时通过。
 	if batchCount <= 0 {
 		return nil
 	}
@@ -60,7 +59,6 @@ func (c *ThrottlingChecker) DoCheck(_ base.StatNode, batchCount uint32, threshol
 	if float64(batchCount) > threshold {
 		return base.NewTokenResultBlocked(base.BlockTypeFlow)
 	}
-	// Here we use nanosecond so that we could control the queueing time more accurately.
 	// 获取当前时间(单位纳秒，方便更精确的计算排队时间)
 	curNano := int64(util.CurrentTimeNano())
 
@@ -70,10 +68,9 @@ func (c *ThrottlingChecker) DoCheck(_ base.StatNode, batchCount uint32, threshol
 	loadedLastPassedTime := atomic.LoadInt64(&c.lastPassedTime)
 	// 当前请求预计的通过时间=最后一个流量排队通过的时间+排队的时间间隔
 	expectedTime := loadedLastPassedTime + intervalNs
-	// 如果预计通过的时间小于当前时间，则说明不需要排队，直接放行。
+	// 如果预计通过的时间小于当前时间，则说明不需要排队，直接放行.
 	if expectedTime <= curNano {
 		if swapped := atomic.CompareAndSwapInt64(&c.lastPassedTime, loadedLastPassedTime, curNano); swapped {
-			// nil means pass
 			return nil
 		}
 	}
@@ -88,7 +85,7 @@ func (c *ThrottlingChecker) DoCheck(_ base.StatNode, batchCount uint32, threshol
 	// 预估排队等待的时长
 	estimatedQueueingDuration = oldTime - curNano
 	if estimatedQueueingDuration > c.maxQueueingTimeNs {
-		// 如果大于了设定的最大等待时长，这里减去排队间隔，因为不需要排队了，直接拒绝当前流量。
+		// 如果大于了设定的最大等待时长，这里减去排队间隔，因为不需要排队了，直接拒绝当前流量.
 		atomic.AddInt64(&c.lastPassedTime, -intervalNs)
 		return base.NewTokenResultBlockedWithCause(base.BlockTypeFlow, BlockMsgQueueing, rule, nil)
 	}

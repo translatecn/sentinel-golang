@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TraceError records the provided error to the given SentinelEntry.
+// TraceError 将提供的错误记录到给定的SentinelEntry
 func TraceError(entry *base.SentinelEntry, err error) {
 	defer func() {
 		if e := recover(); e != nil {

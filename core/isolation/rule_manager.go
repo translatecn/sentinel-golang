@@ -155,7 +155,7 @@ func GetRulesOfResource(res string) []Rule {
 	return ret
 }
 
-// getRules returns all the rules。Any changes of rules take effect for isolation module
+// getRules returns all the rules.Any changes of rules take effect for isolation module
 // getRules is an internal interface.
 func getRules() []*Rule {
 	rwMux.RLock()
@@ -164,7 +164,7 @@ func getRules() []*Rule {
 	return rulesFrom(ruleMap)
 }
 
-// getRulesOfResource returns specific resource's rules。Any changes of rules take effect for isolation module
+// getRulesOfResource returns specific resource's rules.Any changes of rules take effect for isolation module
 // getRulesOfResource is an internal interface.
 func getRulesOfResource(res string) []*Rule {
 	rwMux.RLock()

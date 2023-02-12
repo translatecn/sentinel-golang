@@ -15,7 +15,6 @@ var (
 	DefaultConcurrencyStatSlot = &ConcurrencyStatSlot{}
 )
 
-// ConcurrencyStatSlot is to record the Concurrency statistic for all arguments
 type ConcurrencyStatSlot struct {
 }
 
@@ -50,7 +49,7 @@ func (c *ConcurrencyStatSlot) OnEntryBlocked(ctx *base.EntryContext, blockError 
 	// Do nothing
 }
 
-func (c *ConcurrencyStatSlot) OnCompleted(ctx *base.EntryContext) {
+func (c *ConcurrencyStatSlot) OnCompleted(ctx *base.EntryContext) { // 并发计数
 	res := ctx.Resource.Name()
 	tcs := getTrafficControllersFor(res)
 	for _, tc := range tcs {

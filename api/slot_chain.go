@@ -6,7 +6,6 @@ import (
 	"github.com/alibaba/sentinel-golang/core/flow"
 	"github.com/alibaba/sentinel-golang/core/hotspot"
 	"github.com/alibaba/sentinel-golang/core/isolation"
-	"github.com/alibaba/sentinel-golang/core/log"
 	"github.com/alibaba/sentinel-golang/core/stat"
 	"github.com/alibaba/sentinel-golang/core/system"
 )
@@ -23,14 +22,13 @@ func BuildDefaultSlotChain() *base.SlotChain {
 	sc.AddStatPrepareSlot(stat.DefaultResourceNodePrepareSlot)
 
 	sc.AddRuleCheckSlot(system.DefaultAdaptiveSlot)
-	sc.AddRuleCheckSlot(flow.DefaultSlot)
-	sc.AddRuleCheckSlot(isolation.DefaultSlot)
+	sc.AddRuleCheckSlot(flow.DefaultSlot)      // 流量控制
+	sc.AddRuleCheckSlot(isolation.DefaultSlot) // 并发控制
 	sc.AddRuleCheckSlot(hotspot.DefaultSlot)
 	sc.AddRuleCheckSlot(circuitbreaker.DefaultSlot)
 
 	sc.AddStatSlot(stat.DefaultSlot)
-	sc.AddStatSlot(log.DefaultSlot)
-	sc.AddStatSlot(flow.DefaultStandaloneStatSlot)
+	sc.AddStatSlot(flow.DefaultStandaloneStatSlot) // 流量控制
 	sc.AddStatSlot(hotspot.DefaultConcurrencyStatSlot)
 	sc.AddStatSlot(circuitbreaker.DefaultMetricStatSlot)
 	return sc

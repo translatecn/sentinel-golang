@@ -66,7 +66,6 @@ func InitWithConfigFile(configPath string) error {
 	return initSentinel(configPath)
 }
 
-// initCoreComponents init core components with global config
 func initCoreComponents() error {
 	if config.MetricLogFlushIntervalSec() > 0 {
 		if err := metric.InitTask(); err != nil {

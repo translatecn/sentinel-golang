@@ -45,7 +45,7 @@ const (
 	CurrentResourceRelationStrategy    string = "CurrentResource"
 	AssociatedResourceRelationStrategy string = "AssociatedResource"
 
-	DirectTokenCalculateStrategy string = "Direct"
+	DirectTokenCalculateStrategy string = "Constant"
 	WarmUpTokenCalculateStrategy string = "WarmUp"
 
 	RejectControlBehavior     string = "Reject"
@@ -132,9 +132,9 @@ func (r *FlowRulesReconciler) assembleFlowRules(rs *datasourcev1.FlowRules) []*f
 
 		switch rule.TokenCalculateStrategy {
 		case "":
-			cbRule.TokenCalculateStrategy = flow.Direct
+			cbRule.TokenCalculateStrategy = flow.Constant
 		case DirectTokenCalculateStrategy:
-			cbRule.TokenCalculateStrategy = flow.Direct
+			cbRule.TokenCalculateStrategy = flow.Constant
 		case WarmUpTokenCalculateStrategy:
 			cbRule.TokenCalculateStrategy = flow.WarmUp
 		default:

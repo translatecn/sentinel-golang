@@ -10,89 +10,64 @@ import (
 )
 
 type Entity struct {
-	// Version represents the format version of the entity.
-	Version string
-
+	Version  string // 表示实体的格式版本.
 	Sentinel SentinelConfig
 }
 
-// SentinelConfig represent the general configuration of Sentinel.
+// SentinelConfig 代表哨兵的一般结构.
 type SentinelConfig struct {
 	App struct {
-		// Name represents the name of current running service.
-		Name string
-		// Type indicates the classification of the service (e.g. web service, API gateway).
-		Type int32
+		Name string // 代表哨兵的一般结构.表示当前正在运行的服务的名称.
+		Type int32  // 表示服务的分类(如web服务，API网关).
 	}
-	// Exporter represents configuration items related to exporter, like metric exporter.
-	Exporter ExporterConfig
-	// Log represents configuration items related to logging.
-	Log LogConfig
-	// Stat represents configuration items related to statistics.
-	Stat StatConfig
-	// UseCacheTime indicates whether to cache time(ms)
-	UseCacheTime bool `yaml:"useCacheTime"`
+	Exporter     ExporterConfig // 表示与导出器相关的配置项，如度量导出器.
+	Log          LogConfig      //
+	Stat         StatConfig     //
+	UseCacheTime bool           `yaml:"useCacheTime"` // 是否缓存时间(毫秒)
 }
 
-// ExporterConfig represents configuration items related to exporter, like metric exporter.
 type ExporterConfig struct {
 	Metric MetricExporterConfig
 }
 
-// MetricExporterConfig represents configuration of metric exporter.
 type MetricExporterConfig struct {
-	// HttpAddr is the http server listen address, like ":8080".
-	HttpAddr string `yaml:"http_addr"`
-	// HttpPath is the http request path of access metrics, like "/metrics".
-	HttpPath string `yaml:"http_path"`
+	HttpAddr string `yaml:"http_addr"` // HTTP服务器监听地址，如“:8080”.
+	HttpPath string `yaml:"http_path"` // 是访问度量的HTTP请求路径，如“/metrics”.
 }
 
-// LogConfig represent the configuration of logging in Sentinel.
 type LogConfig struct {
-	// Logger indicates that using logger to replace default logging.
-	Logger logging.Logger
-	// Dir represents the log directory path.
-	Dir string
-	// UsePid indicates whether the filename ends with the process ID (PID).
-	UsePid bool `yaml:"usePid"`
-	// Metric represents the configuration items of the metric log.
-	Metric MetricLogConfig
+	Logger logging.Logger  //
+	Dir    string          //
+	UsePid bool            `yaml:"usePid"` // 表示文件名是否以进程ID (PID)结束.
+	Metric MetricLogConfig // 表示度量日志的配置项.
 }
 
-// MetricLogConfig represents the configuration items of the metric log.
 type MetricLogConfig struct {
 	SingleFileMaxSize uint64 `yaml:"singleFileMaxSize"`
 	MaxFileCount      uint32 `yaml:"maxFileCount"`
 	FlushIntervalSec  uint32 `yaml:"flushIntervalSec"`
 }
 
-// StatConfig represents the configuration items of statistics.
+// StatConfig 表示统计信息的配置项.
 type StatConfig struct {
-	// GlobalStatisticSampleCountTotal and GlobalStatisticIntervalMsTotal is the per resource's global default statistic sliding window config
+	// 是每个资源的全局默认统计滑动窗口配置
 	GlobalStatisticSampleCountTotal uint32 `yaml:"globalStatisticSampleCountTotal"`
 	GlobalStatisticIntervalMsTotal  uint32 `yaml:"globalStatisticIntervalMsTotal"`
 
-	// MetricStatisticSampleCount and MetricStatisticIntervalMs is the per resource's default readonly metric statistic
-	// This default readonly metric statistic must be reusable based on global statistic.
-	MetricStatisticSampleCount uint32 `yaml:"metricStatisticSampleCount"`
-	MetricStatisticIntervalMs  uint32 `yaml:"metricStatisticIntervalMs"`
-
-	System SystemStatConfig `yaml:"system"`
+	// 每个资源的默认只读指标统计吗
+	// 这个默认的只读度量统计必须基于全局统计可重用.
+	MetricStatisticSampleCount uint32           `yaml:"metricStatisticSampleCount"`
+	MetricStatisticIntervalMs  uint32           `yaml:"metricStatisticIntervalMs"`
+	System                     SystemStatConfig `yaml:"system"`
 }
 
-// SystemStatConfig represents the configuration items of system statistics.
 type SystemStatConfig struct {
-	// CollectIntervalMs represents the collecting interval of the system metrics collector.
-	CollectIntervalMs uint32 `yaml:"collectIntervalMs"`
-	// CollectLoadIntervalMs represents the collecting interval of the system load collector.
-	CollectLoadIntervalMs uint32 `yaml:"collectLoadIntervalMs"`
-	// CollectCpuIntervalMs represents the collecting interval of the system cpu usage collector.
-	CollectCpuIntervalMs uint32 `yaml:"collectCpuIntervalMs"`
-	// CollectMemoryIntervalMs represents the collecting interval of the system memory usage collector.
-	CollectMemoryIntervalMs uint32 `yaml:"collectMemoryIntervalMs"`
+	CollectIntervalMs       uint32 `yaml:"collectIntervalMs"`       // 表示系统指标收集器的收集间隔.
+	CollectLoadIntervalMs   uint32 `yaml:"collectLoadIntervalMs"`   // 表示系统负载收集器的收集间隔.
+	CollectCpuIntervalMs    uint32 `yaml:"collectCpuIntervalMs"`    // 表示系统CPU使用率收集器的收集间隔.
+	CollectMemoryIntervalMs uint32 `yaml:"collectMemoryIntervalMs"` // 表示系统内存使用收集器的收集间隔.
 }
 
-// NewDefaultConfig creates a new default config entity.
 func NewDefaultConfig() *Entity {
 	return &Entity{
 		Version: "v1",

@@ -7,12 +7,11 @@ import (
 
 type ResourceNode struct {
 	BaseStatNode
-
 	resourceName string
 	resourceType base.ResourceType
 }
 
-// NewResourceNode creates a new resource node with given name and classification.
+// NewResourceNode 创建具有给定名称和分类的新资源节点
 func NewResourceNode(resourceName string, resourceType base.ResourceType) *ResourceNode {
 	return &ResourceNode{
 		BaseStatNode: *NewBaseStatNode(config.MetricStatisticSampleCount(), config.MetricStatisticIntervalMs()),

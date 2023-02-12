@@ -8,21 +8,13 @@ type TimePredicate func(uint64) bool
 
 type MetricEvent int8
 
-// There are five events to record
-// pass + block == Total
 const (
-	// sentinel rules check pass
-	MetricEventPass MetricEvent = iota
-	// sentinel rules check block
-	MetricEventBlock
-
-	MetricEventComplete
-	// Biz error, used for circuit breaker
-	MetricEventError
-	// request execute rt, unit is millisecond
-	MetricEventRt
-	// hack for the number of event
-	MetricEventTotal
+	MetricEventPass     MetricEvent = iota // 哨点规则检查通过
+	MetricEventBlock                       //
+	MetricEventComplete                    //
+	MetricEventError                       // Biz误差，用于断路器
+	MetricEventRt                          // 请求执行rt，单位为毫秒
+	MetricEventTotal                       // hack事件的数量
 )
 
 var (
@@ -31,12 +23,11 @@ var (
 )
 
 type ReadStat interface {
-	GetQPS(event MetricEvent) float64
-	GetPreviousQPS(event MetricEvent) float64
-	GetSum(event MetricEvent) int64
-
-	MinRT() float64
-	AvgRT() float64
+	GetQPS(event MetricEvent) float64         // QPS请求量
+	GetPreviousQPS(event MetricEvent) float64 // 获取之前的请求QPS
+	GetSum(event MetricEvent) int64           // 获取当前统计周期内已通过的请求数量
+	MinRT() float64                           // 最小的请求时间
+	AvgRT() float64                           // 平均请求时间
 }
 
 func NopReadStat() *nopReadStat {
@@ -67,8 +58,7 @@ func (rs *nopReadStat) AvgRT() float64 {
 }
 
 type WriteStat interface {
-	// AddCount adds given count to the metric of provided MetricEvent.
-	AddCount(event MetricEvent, count int64)
+	AddCount(event MetricEvent, count int64) // 将给定的计数添加到提供的MetricEvent的度量中.
 }
 
 func NopWriteStat() *nopWriteStat {
@@ -81,7 +71,7 @@ type nopWriteStat struct {
 func (ws *nopWriteStat) AddCount(_ MetricEvent, _ int64) {
 }
 
-// ConcurrencyStat provides read/update operation for concurrency statistics.
+// ConcurrencyStat 提供并发统计的读/更新操作.
 type ConcurrencyStat interface {
 	CurrentConcurrency() int32
 	IncreaseConcurrency()
@@ -91,13 +81,9 @@ type ConcurrencyStat interface {
 // StatNode holds real-time statistics for resources.
 type StatNode interface {
 	MetricItemRetriever
-
 	ReadStat
 	WriteStat
 	ConcurrencyStat
-
-	// GenerateReadStat generates the readonly metric statistic based on resource level global statistic
-	// If parameters, sampleCount and intervalInMs, are not suitable for resource level global statistic, return (nil, error)
 	GenerateReadStat(sampleCount uint32, intervalInMs uint32) (ReadStat, error)
 }
 
@@ -114,29 +100,21 @@ func CheckValidityForStatistic(sampleCount, intervalInMs uint32) error {
 	return nil
 }
 
-// CheckValidityForReuseStatistic checks whether the read-only stat-metric with given attributes
-// (i.e. sampleCount and intervalInMs) can be built based on underlying global statistics data-structure
-// with given attributes (parentSampleCount and parentIntervalInMs). Returns nil if the attributes
-// satisfy the validation, or return specific error if not.
-//
-// The parameters, sampleCount and intervalInMs, are the attributes of the stat-metric view you want to build.
-// The parameters, parentSampleCount and parentIntervalInMs, are the attributes of the underlying statistics data-structure.
+// CheckValidityForReuseStatistic 👌🏻
 func CheckValidityForReuseStatistic(sampleCount, intervalInMs uint32, parentSampleCount, parentIntervalInMs uint32) error {
 	if intervalInMs == 0 || sampleCount == 0 || intervalInMs%sampleCount != 0 {
 		return IllegalStatisticParamsError
 	}
-	bucketLengthInMs := intervalInMs / sampleCount
+	bucketLengthInMs := intervalInMs / sampleCount // 每个bucket的长度
 
 	if parentIntervalInMs == 0 || parentSampleCount == 0 || parentIntervalInMs%parentSampleCount != 0 {
 		return IllegalGlobalStatisticParamsError
 	}
 	parentBucketLengthInMs := parentIntervalInMs / parentSampleCount
 
-	// intervalInMs of the SlidingWindowMetric is not divisible by BucketLeapArray's intervalInMs
 	if parentIntervalInMs%intervalInMs != 0 {
 		return GlobalStatisticNonReusableError
 	}
-	// BucketLeapArray's BucketLengthInMs is not divisible by BucketLengthInMs of SlidingWindowMetric
 	if bucketLengthInMs%parentBucketLengthInMs != 0 {
 		return GlobalStatisticNonReusableError
 	}

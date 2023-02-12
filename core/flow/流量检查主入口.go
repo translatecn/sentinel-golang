@@ -16,39 +16,31 @@ func init() {
 	metric_exporter.Register(resourceFlowThresholdGauge)
 }
 
-// TrafficShapingCalculator 根据规则的阈值和token计算策略计算实际的阈值
+// TrafficShapingCalculator 根据规则阈值 和token计算策略计算实际的阈值
 type TrafficShapingCalculator interface {
 	BoundOwner() *TrafficShapingController
-	CalculateAllowedTokens(batchCount uint32, flag int32) float64
+	CalculateAllowedTokens(batchCount uint32, flag int32) float64 // 返回当前状态下的令牌阈值
 }
 
-// TrafficShapingChecker 根据当前指标和控制行为进行检查，生成token控制结果。
+// TrafficShapingChecker 根据当前指标和控制行为进行检查，生成token控制结果.
 type TrafficShapingChecker interface {
 	BoundOwner() *TrafficShapingController
 	DoCheck(resStat base.StatNode, batchCount uint32, threshold float64) *base.TokenResult
 }
 
-// standaloneStatistic indicates the independent statistic for each TrafficShapingController
+// standaloneStatistic 表示每个TrafficShapingController的独立统计量
 type standaloneStatistic struct {
-	// reuseResourceStat indicates whether current standaloneStatistic reuse the current resource's global statistic
-	reuseResourceStat bool
-	// readOnlyMetric is the readonly metric statistic.
-	// if reuseResourceStat is true, it would be the reused SlidingWindowMetric
-	// if reuseResourceStat is false, it would be the BucketLeapArray
-	readOnlyMetric base.ReadStat
-	// writeOnlyMetric is the write only metric statistic.
-	// if reuseResourceStat is true, it would be nil
-	// if reuseResourceStat is false, it would be the BucketLeapArray
-	writeOnlyMetric base.WriteStat
+	reuseResourceStat bool           // 指示当前独立统计是否重用当前资源的全局统计
+	readOnlyMetric    base.ReadStat  // 只读度量统计量. true，它将是重用的SlidingWindowMetric;  false，它将是BucketLeapArray
+	writeOnlyMetric   base.WriteStat // 只写度量统计量. true，它将为nil  ;  false，它将是BucketLeapArray
 }
 
+// TrafficShapingController 流量控制
 type TrafficShapingController struct {
 	flowCalculator TrafficShapingCalculator
 	flowChecker    TrafficShapingChecker
-
-	rule *Rule
-	// boundStat is the statistic of current TrafficShapingController
-	boundStat standaloneStatistic
+	rule           *Rule
+	boundStat      standaloneStatistic // 当前指标的度量值
 }
 
 func NewTrafficShapingController(rule *Rule, boundStat *standaloneStatistic) (*TrafficShapingController, error) {
@@ -68,9 +60,7 @@ func (t *TrafficShapingController) FlowCalculator() TrafficShapingCalculator {
 }
 
 func (t *TrafficShapingController) PerformChecking(resStat base.StatNode, batchCount uint32, flag int32) *base.TokenResult {
-	allowedTokens := t.flowCalculator.CalculateAllowedTokens(batchCount, flag)
-
-	resourceFlowThresholdGauge.Set(float64(allowedTokens), t.rule.Resource)
-
+	allowedTokens := t.flowCalculator.CalculateAllowedTokens(batchCount, flag) // 根据规则阈值 和token计算策略计算实际的阈值
+	resourceFlowThresholdGauge.Set(allowedTokens, t.rule.Resource)             // 上报指标
 	return t.flowChecker.DoCheck(resStat, batchCount, allowedTokens)
 }

@@ -80,10 +80,10 @@ func newBaseTrafficShapingController(r *Rule) *baseTrafficShapingController {
 		return newBaseTrafficShapingControllerWithMetric(r, metric)
 	case Concurrency:
 		size := 0
-		if r.ParamsMaxCapacity > 0 {
+		if r.ParamsMaxCapacity > 0 { // cache 最大容量
 			size = int(r.ParamsMaxCapacity)
 		} else {
-			size = ConcurrencyMaxCount
+			size = ConcurrencyMaxCount // 4000
 		}
 		metric := &ParamsMetric{
 			ConcurrencyCounter: cache.NewLRUCacheMap(size),

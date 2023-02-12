@@ -10,19 +10,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-// SlidingWindowMetric represents the sliding window metric wrapper.
-// It does not store any data and is the wrapper of BucketLeapArray to adapt to different internal bucket.
-//
-// SlidingWindowMetric is designed as a high-level, read-only statistic structure for functionalities of Sentinel
+// SlidingWindowMetric 表示滑动窗口度量的包装器.
+// 它不存储任何数据，是BucketLeapArray的包装器，以适应不同的内部桶.
+// SlidingWindowMetric被设计为Sentinel功能的高级只读统计结构
 type SlidingWindowMetric struct {
-	bucketLengthInMs uint32
-	sampleCount      uint32
-	intervalInMs     uint32
+	bucketLengthInMs uint32 // 每个bucket内的时间长度
+	sampleCount      uint32 // 一个窗口中的采样次数，或者叫bucket数
+	intervalInMs     uint32 // 统计的窗口大小，单位毫秒
 	real             *BucketLeapArray
 }
 
-// NewSlidingWindowMetric creates a SlidingWindowMetric with given attributes.
-// The pointer to the internal statistic BucketLeapArray should be valid.
+// NewSlidingWindowMetric 指向内部统计BucketLeapArray的指针应该是有效的.
 func NewSlidingWindowMetric(sampleCount, intervalInMs uint32, real *BucketLeapArray) (*SlidingWindowMetric, error) {
 	if real == nil {
 		return nil, errors.New("nil BucketLeapArray")
@@ -30,7 +28,7 @@ func NewSlidingWindowMetric(sampleCount, intervalInMs uint32, real *BucketLeapAr
 	if err := base.CheckValidityForReuseStatistic(sampleCount, intervalInMs, real.SampleCount(), real.IntervalInMs()); err != nil {
 		return nil, err
 	}
-	bucketLengthInMs := intervalInMs / sampleCount
+	bucketLengthInMs := intervalInMs / sampleCount // 每个bucket内的时间长度
 
 	return &SlidingWindowMetric{
 		bucketLengthInMs: bucketLengthInMs,
@@ -40,8 +38,8 @@ func NewSlidingWindowMetric(sampleCount, intervalInMs uint32, real *BucketLeapAr
 	}, nil
 }
 
-// getBucketStartRange returns start time range of the bucket for the provided time.
-// The actual time span is: [start, end + in.bucketTimeLength)
+// getBucketStartRange返回桶的起始时间范围.
+// 实际的时间跨度是:[start, end + in.bucketTimeLength)
 // 根据当前时间获取整个周期对应的窗口的开始时间和结束时间
 func (m *SlidingWindowMetric) getBucketStartRange(timeMs uint64) (start, end uint64) {
 	curBucketStartTime := calculateStartTime(timeMs, m.real.BucketLengthInMs())
@@ -76,9 +74,10 @@ func (m *SlidingWindowMetric) GetSum(event base.MetricEvent) int64 {
 	return m.getSumWithTime(util.CurrentTimeMillis(), event)
 }
 
+// 某种事件，当前缓存时间
 func (m *SlidingWindowMetric) getSumWithTime(now uint64, event base.MetricEvent) int64 {
-	satisfiedBuckets := m.getSatisfiedBuckets(now)
-	return m.count(event, satisfiedBuckets)
+	satisfiedBuckets := m.getSatisfiedBuckets(now) // 根据时间,获取相对的buckets
+	return m.count(event, satisfiedBuckets)        // 统计相应的数据
 }
 
 func (m *SlidingWindowMetric) GetQPS(event base.MetricEvent) float64 {
@@ -96,8 +95,8 @@ func (m *SlidingWindowMetric) getQPSWithTime(now uint64, event base.MetricEvent)
 // 根据当前时间获取周期内的所有窗口
 func (m *SlidingWindowMetric) getSatisfiedBuckets(now uint64) []*BucketWrap {
 	start, end := m.getBucketStartRange(now)
-	// Extracts the buckets of which the startTime is between [start, end]
-	// which means the time view of the buckets is [firstStart, endStart+bucketLength)
+	//提取startTime在[start, end]之间的桶
+	//表示桶的时间视图为[firstStart, endStart+bucketLength]
 	satisfiedBuckets := m.real.ValuesConditional(now, func(ws uint64) bool {
 		return ws >= start && ws <= end
 	})
@@ -180,8 +179,7 @@ func (m *SlidingWindowMetric) AvgRT() float64 {
 	return float64(m.GetSum(base.MetricEventRt)) / float64(m.GetSum(base.MetricEventComplete))
 }
 
-// SecondMetricsOnCondition aggregates metric items by second on condition that
-// the startTime of the statistic buckets satisfies the time predicate.
+// SecondMetricsOnCondition 在统计桶的startTime满足时间谓词的条件下，以秒为单位聚合度量项。
 func (m *SlidingWindowMetric) SecondMetricsOnCondition(predicate base.TimePredicate) []*base.MetricItem {
 	ws := m.real.ValuesConditional(util.CurrentTimeMillis(), predicate)
 
@@ -208,8 +206,7 @@ func (m *SlidingWindowMetric) SecondMetricsOnCondition(predicate base.TimePredic
 	return items
 }
 
-// metricItemFromBuckets aggregates multiple bucket wrappers (based on the same startTime in second)
-// to the single MetricItem.
+// metricItemFromBuckets 聚合多个桶包装器(基于相同的startTime，单位为秒)到单个MetricItem。
 func (m *SlidingWindowMetric) metricItemFromBuckets(ts uint64, ws []*BucketWrap) *base.MetricItem {
 	item := &base.MetricItem{Timestamp: ts}
 	var allRt int64 = 0

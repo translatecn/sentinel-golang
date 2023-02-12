@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-// ControlBehavior indicates the traffic shaping behaviour.
 type ControlBehavior int32
 
 const (
@@ -26,13 +25,10 @@ func (t ControlBehavior) String() string {
 	}
 }
 
-// MetricType represents the target metric type.
 type MetricType int32
 
 const (
-	// Concurrency represents concurrency count.
 	Concurrency MetricType = iota
-	// QPS represents request count per second.
 	QPS
 )
 
@@ -47,20 +43,10 @@ func (t MetricType) String() string {
 	}
 }
 
-// Rule represents the hotspot(frequent) parameter flow control rule
 type Rule struct {
-	// ID is the unique id
-	ID string `json:"id,omitempty"`
-	// Resource is the resource name
-	Resource string `json:"resource"`
-	// MetricType indicates the metric type for checking logic.
-	// For Concurrency metric, hotspot module will check the each hot parameter's concurrency,
-	//		if concurrency exceeds the Threshold, reject the traffic directly.
-	// For QPS metric, hotspot module will check the each hot parameter's QPS,
-	//		the ControlBehavior decides the behavior of traffic shaping controller
-	MetricType MetricType `json:"metricType"`
-	// ControlBehavior indicates the traffic shaping behaviour.
-	// ControlBehavior only takes effect when MetricType is QPS
+	ID              string          `json:"id,omitempty"`
+	Resource        string          `json:"resource"`
+	MetricType      MetricType      `json:"metricType"`
 	ControlBehavior ControlBehavior `json:"controlBehavior"`
 	// ParamIndex is the index in context arguments slice.
 	// if ParamIndex is great than or equals to zero, ParamIndex means the <ParamIndex>-th parameter
@@ -79,11 +65,9 @@ type Rule struct {
 	BurstCount int64 `json:"burstCount"`
 	// DurationInSec is the time interval in statistic
 	// DurationInSec only takes effect when MetricType is QPS
-	DurationInSec int64 `json:"durationInSec"`
-	// ParamsMaxCapacity is the max capacity of cache statistic
-	ParamsMaxCapacity int64 `json:"paramsMaxCapacity"`
-	// SpecificItems indicates the special threshold for specific value
-	SpecificItems map[interface{}]int64 `json:"specificItems"`
+	DurationInSec     int64                 `json:"durationInSec"`
+	ParamsMaxCapacity int64                 `json:"paramsMaxCapacity"` // cache 最大容量
+	SpecificItems     map[interface{}]int64 `json:"specificItems"`     // 特定值的特殊阈值
 }
 
 func (r *Rule) String() string {
@@ -104,7 +88,6 @@ func (r *Rule) IsStatReusable(newRule *Rule) bool {
 	return r.Resource == newRule.Resource && r.ControlBehavior == newRule.ControlBehavior && r.ParamsMaxCapacity == newRule.ParamsMaxCapacity && r.DurationInSec == newRule.DurationInSec && r.MetricType == newRule.MetricType
 }
 
-// Equals checks whether current rule is consistent with the given rule.
 func (r *Rule) Equals(newRule *Rule) bool {
 	baseCheck := r.Resource == newRule.Resource && r.MetricType == newRule.MetricType && r.ControlBehavior == newRule.ControlBehavior && r.ParamsMaxCapacity == newRule.ParamsMaxCapacity && r.ParamIndex == newRule.ParamIndex && r.ParamKey == newRule.ParamKey && r.Threshold == newRule.Threshold && r.DurationInSec == newRule.DurationInSec && reflect.DeepEqual(r.SpecificItems, newRule.SpecificItems)
 	if !baseCheck {

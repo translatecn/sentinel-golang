@@ -34,7 +34,7 @@ func NewWarmUpTrafficShapingCalculator(owner *TrafficShapingController, rule *Ru
 
 	// 这俩参数主要由 预热周期,预热因子,周期控制
 
-	// 令牌预警数量，即令牌桶中的剩余令牌数量到达预警值时，预热结束。[一定时间内请求的几分之几]
+	// 令牌预警数量，即令牌桶中的剩余令牌数量到达预警值时，预热结束.[一定时间内请求的几分之几]
 	warningToken := uint64((float64(rule.WarmUpPeriodSec) * rule.Threshold) / float64(rule.WarmUpColdFactor-1))
 
 	// 令牌桶最大容量，当令牌桶到达容量后，生成的令牌将被丢弃
@@ -100,7 +100,7 @@ func (c *WarmUpTrafficShapingCalculator) syncToken(passQps float64) {
 	oldValue := atomic.LoadInt64(&c.storedTokens)
 	// 初始化/生成令牌
 	newValue := c.coolDownTokens(currentTime, passQps)
-	// 利用cas存储最新的令牌数量，避免并发不安全问题。
+	// 利用cas存储最新的令牌数量，避免并发不安全问题.
 	if atomic.CompareAndSwapInt64(&c.storedTokens, oldValue, newValue) {
 		// 最终桶中令牌数=桶中令牌数-已经通过的QPS
 		if currentValue := atomic.AddInt64(&c.storedTokens, int64(-passQps)); currentValue < 0 {

@@ -11,11 +11,9 @@ import (
 type BaseStatNode struct {
 	sampleCount uint32
 	intervalMs  uint32
-
 	concurrency int32
-
-	arr    *sbase.BucketLeapArray
-	metric *sbase.SlidingWindowMetric
+	arr         *sbase.BucketLeapArray
+	metric      *sbase.SlidingWindowMetric
 }
 
 func NewBaseStatNode(sampleCount uint32, intervalInMs uint32) *BaseStatNode {

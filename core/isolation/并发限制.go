@@ -45,7 +45,7 @@ func checkPass(ctx *base.EntryContext) (bool, *Rule, uint32) {
 	for _, rule := range getRulesOfResource(ctx.Resource.Name()) {
 		threshold := rule.Threshold
 		if rule.MetricType == Concurrency {
-			if cur := statNode.CurrentConcurrency(); cur >= 0 {
+			if cur := statNode.CurrentConcurrency(); cur >= 0 { //	sn.DecreaseConcurrency() // 降低并发量，应为当前请求完成了
 				curCount = uint32(cur)
 			} else {
 				curCount = 0

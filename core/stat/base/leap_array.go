@@ -12,17 +12,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// BucketWrap represents a slot to record metrics.
-//
-// In order to reduce memory footprint, BucketWrap does not hold the length of the bucket.
-// The length of BucketWrap could be seen in LeapArray.
-// The scope of time is [startTime, startTime+bucketLength).
-// The size of BucketWrap is 24(8+16) bytes.
+// BucketWrap 表示记录度量的槽。
+// 为了减少内存占用，BucketWrap不保存桶的长度。
+// 在LeapArray中可以看到BucketWrap的长度。
+// 时间范围为[startTime, startTime+bucketLength]。
+// BucketWrap的大小为24(8+16)字节。
 type BucketWrap struct {
-	// BucketStart represents start timestamp of this statistic bucket wrapper.
 	BucketStart uint64
-	// Value represents the actual data structure of the metrics (e.g. MetricBucket).
-	Value atomic.Value
+	Value       atomic.Value
 }
 
 func (ww *BucketWrap) resetTo(startTime uint64) {
@@ -38,11 +35,10 @@ func calculateStartTime(now uint64, bucketLengthInMs uint32) uint64 {
 	return now - (now % uint64(bucketLengthInMs))
 }
 
-// AtomicBucketWrapArray represents a thread-safe circular array.
-//
-// The length of the array should be provided on-create and cannot be modified.
+// AtomicBucketWrapArray 表示线程安全的循环数组.
+// 数组的长度应该在创建时提供，不能被修改.
 type AtomicBucketWrapArray struct {
-	base   unsafe.Pointer // 窗口数组首元素地址
+	base   unsafe.Pointer // .data内部结构SliceHeader 中Data的地址
 	length int            // 窗口数组的长度
 	data   []*BucketWrap  //窗口数组
 }
@@ -53,6 +49,7 @@ func NewAtomicBucketWrapArrayWithTime(len int, bucketLengthInMs uint32, now uint
 		data:   make([]*BucketWrap, len),
 	}
 	// 窗口下标位置
+	// bucketLengthInMs 每个bucket的时间长度
 	idx := int((now / uint64(bucketLengthInMs)) % uint64(len))
 	startTime := calculateStartTime(now, bucketLengthInMs)
 
@@ -77,17 +74,15 @@ func NewAtomicBucketWrapArrayWithTime(len int, bucketLengthInMs uint32, now uint
 
 	// calculate base address for real data array
 	//3:将窗口数组首元素地址设置到原子时间轮
-	//这么做的原因主要是实现对时间轮中的元素（窗口）进行原子无锁的读取和更新，极大的提升性能。
+	//这么做的原因主要是实现对时间轮中的元素（窗口）进行原子无锁的读取和更新，极大的提升性能.
 	sliHeader := (*util.SliceHeader)(unsafe.Pointer(&ret.data))
 	ret.base = unsafe.Pointer((**BucketWrap)(unsafe.Pointer(sliHeader.Data)))
 	return ret
 }
 
-// NewAtomicBucketWrapArray creates an AtomicBucketWrapArray and initializes data of each BucketWrap.
-//
-// The len represents the length of the circular array.
-// The bucketLengthInMs represents bucket length of each bucket (in milliseconds).
-// The generator accepts a BucketGenerator to generate and refresh buckets.
+// NewAtomicBucketWrapArray 创建一个AtomicBucketWrapArray，初始化每个BucketWrap的数据.
+// len表示桶的长度.bucketLengthInMs表示每个桶的桶长(单位为毫秒).
+// 生成器接受BucketGenerator来生成和刷新桶.
 func NewAtomicBucketWrapArray(len int, bucketLengthInMs uint32, generator BucketGenerator) *AtomicBucketWrapArray {
 	return NewAtomicBucketWrapArrayWithTime(len, bucketLengthInMs, util.CurrentTimeMillis(), generator)
 }
@@ -106,8 +101,6 @@ func (aa *AtomicBucketWrapArray) elementOffset(idx int) (unsafe.Pointer, bool) {
 
 // 获取对应窗口
 func (aa *AtomicBucketWrapArray) get(idx int) *BucketWrap {
-	// aa.elementOffset(idx) return the secondary pointer of BucketWrap, which is the pointer to the aa.data[idx]
-	// then convert to (*unsafe.Pointer)
 	if offset, ok := aa.elementOffset(idx); ok {
 		return (*BucketWrap)(atomic.LoadPointer((*unsafe.Pointer)(offset)))
 	}
@@ -125,12 +118,9 @@ func (aa *AtomicBucketWrapArray) compareAndSet(idx int, except, update *BucketWr
 	return false
 }
 
-// LeapArray represents the fundamental implementation of a sliding window data-structure.
+// LeapArray 表示滑动窗口数据结构的基本实现
 //
-// Some important attributes: the sampleCount represents the number of buckets,
-// while intervalInMs represents the total time span of the sliding window.
-//
-// For example, assuming sampleCount=5, intervalInMs is 1000ms, so the bucketLength is 200ms.
+// For example, assuming bucketCount=5, intervalInMs is 1000ms, so the bucketLength is 200ms.
 // Let's give a diagram to illustrate.
 // Suppose current timestamp is 1188, bucketLength is 200ms, intervalInMs is 1000ms, then
 // time span of current bucket is [1000, 1200). The representation of the underlying structure:
@@ -141,30 +131,26 @@ func (aa *AtomicBucketWrapArray) compareAndSet(idx int, except, update *BucketWr
 //	       ^
 //	    time=1188
 type LeapArray struct {
-	bucketLengthInMs uint32
-	// sampleCount represents the number of BucketWrap.
-	sampleCount uint32
-	// intervalInMs represents the total time span of the sliding window (in milliseconds).
-	intervalInMs uint32
-	// array represents the internal circular array.
-	array *AtomicBucketWrapArray
-	// updateLock is the internal lock for update operations.
-	updateLock mutex
+	bucketLengthInMs uint32                 //
+	bucketCount      uint32                 // 表示BucketWrap的个数.
+	intervalInMs     uint32                 // 表示滑动窗口的总时间跨度(以毫秒为单位).
+	array            *AtomicBucketWrapArray // 表示内部圆形数组.
+	updateLock       mutex                  // 更新操作的内部锁.
 }
 
-func NewLeapArray(sampleCount uint32, intervalInMs uint32, generator BucketGenerator) (*LeapArray, error) {
-	if sampleCount == 0 || intervalInMs%sampleCount != 0 {
-		return nil, errors.Errorf("Invalid parameters, intervalInMs is %d, sampleCount is %d", intervalInMs, sampleCount)
+func NewLeapArray(bucketCount uint32, intervalInMs uint32, generator BucketGenerator) (*LeapArray, error) {
+	if bucketCount == 0 || intervalInMs%bucketCount != 0 {
+		return nil, errors.Errorf("Invalid parameters, intervalInMs is %d, bucketCount is %d", intervalInMs, bucketCount)
 	}
 	if generator == nil {
 		return nil, errors.Errorf("Invalid parameters, BucketGenerator is nil")
 	}
-	bucketLengthInMs := intervalInMs / sampleCount
+	bucketLengthInMs := intervalInMs / bucketCount // 每个bucket的长度
 	return &LeapArray{
 		bucketLengthInMs: bucketLengthInMs,
-		sampleCount:      sampleCount,
+		bucketCount:      bucketCount,
 		intervalInMs:     intervalInMs,
-		array:            NewAtomicBucketWrapArray(int(sampleCount), bucketLengthInMs, generator),
+		array:            NewAtomicBucketWrapArray(int(bucketCount), bucketLengthInMs, generator),
 	}, nil
 }
 
@@ -214,8 +200,8 @@ func (la *LeapArray) currentBucketOfTime(now uint64, bg BucketGenerator) (*Bucke
 				runtime.Gosched()
 			}
 		} else if bucketStart < atomic.LoadUint64(&old.BucketStart) {
-			if la.sampleCount == 1 {
-				// if sampleCount==1 in leap array, in concurrency scenario, this case is possible
+			if la.bucketCount == 1 {
+				// if bucketCount==1 in leap array, in concurrency scenario, this case is possible
 				return old, nil
 			}
 			// TODO: reserve for some special case (e.g. when occupying "future" buckets).
@@ -250,8 +236,8 @@ func (la *LeapArray) valuesWithTime(now uint64) []*BucketWrap {
 	return ret
 }
 
-// ValuesConditional returns all buckets of which the startTimestamp satisfies the given timestamp condition (predicate).
-// The function uses the parameter "now" as the target timestamp.
+// ValuesConditional 返回startTimestamp满足给定时间戳条件(谓词)的所有桶。
+// 函数使用参数"now"作为目标时间戳。
 func (la *LeapArray) ValuesConditional(now uint64, predicate base.TimePredicate) []*BucketWrap {
 	if now <= 0 {
 		return make([]*BucketWrap, 0)
@@ -267,17 +253,13 @@ func (la *LeapArray) ValuesConditional(now uint64, predicate base.TimePredicate)
 	return ret
 }
 
-// isBucketDeprecated checks whether the BucketWrap is expired, according to given timestamp.
 func (la *LeapArray) isBucketDeprecated(now uint64, ww *BucketWrap) bool {
 	ws := atomic.LoadUint64(&ww.BucketStart)
 	return (now - ws) > uint64(la.intervalInMs)
 }
 
-// BucketGenerator represents the "generic" interface for generating and refreshing buckets.
+// BucketGenerator 表示用于生成和刷新桶的“通用”接口.
 type BucketGenerator interface {
-	// NewEmptyBucket creates new raw data inside the bucket.
 	NewEmptyBucket() interface{}
-
-	// ResetBucketTo refreshes the BucketWrap to provided startTime and resets all data inside the given bucket.
 	ResetBucketTo(bucket *BucketWrap, startTime uint64) *BucketWrap
 }

@@ -51,10 +51,10 @@ type Counter interface {
 	Add(value float64, labelValues ...string)
 }
 
-// Gauge is a Metric that represents a single numerical value that can arbitrarily go up and down.
+// Gauge 是一个度量，表示一个可以任意上升和下降的单一数值.
 type Gauge interface {
 	Metric
-	Set(value float64, labelValues ...string)
+	Set(value float64, labelValues ...string) // 设置label值
 }
 
 // Histogram counts individual observations from an event or sample stream in configurable buckets.

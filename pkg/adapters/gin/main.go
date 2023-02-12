@@ -15,7 +15,7 @@ func initSentinel() {
 		{
 			Resource:               "GET:/test",
 			Threshold:              1.0,
-			TokenCalculateStrategy: flow.Direct,
+			TokenCalculateStrategy: flow.Constant,
 			ControlBehavior:        flow.Reject,
 			StatIntervalInMs:       100000, // Threshold/StatIntervalInMs
 		},
@@ -33,7 +33,7 @@ func main() {
 				//return ctx.GetHeader("X-Real-IP")
 				return ctx.FullPath() // 请求路径
 			}),
-			// 自定义块回退，如果需要终止，默认状态为429
+			// 自定义阻塞回退，如果需要终止，默认状态为429
 			WithBlockFallback(func(ctx *gin.Context) {
 				ctx.AbortWithStatusJSON(400, map[string]interface{}{
 					"err":  "too many request; the quota used up",

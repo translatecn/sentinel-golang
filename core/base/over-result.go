@@ -49,9 +49,9 @@ func (t BlockType) String() string {
 type TokenResultStatus uint8
 
 const (
-	ResultStatusPass TokenResultStatus = iota
-	ResultStatusBlocked
-	ResultStatusShouldWait
+	ResultStatusPass       TokenResultStatus = iota
+	ResultStatusBlocked                      // 已经阻塞了，drop流量
+	ResultStatusShouldWait                   // 已经阻塞，排队
 )
 
 func (s TokenResultStatus) String() string {

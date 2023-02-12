@@ -11,9 +11,8 @@ type ResourceNodeMap map[string]*ResourceNode
 
 var (
 	inboundNode = NewResourceNode(base.TotalInBoundResourceName, base.ResTypeCommon)
-
-	resNodeMap = make(ResourceNodeMap)
-	rnsMux     = new(sync.RWMutex)
+	resNodeMap  = make(ResourceNodeMap)
+	rnsMux      = new(sync.RWMutex)
 )
 
 // InboundNode returns the global inbound statistic node.

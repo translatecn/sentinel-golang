@@ -40,9 +40,9 @@ var (
 )
 
 func init() {
-	// Initialize the traffic shaping controller generator map for existing control behaviors.
+	// 初始化现有控制行为的流量整形控制器生成器映射。
 	tcGenFuncMap[trafficControllerGenKey{
-		tokenCalculateStrategy: Direct,
+		tokenCalculateStrategy: Constant,
 		controlBehavior:        Reject,
 	}] = func(rule *Rule, boundStat *standaloneStatistic) (*TrafficShapingController, error) {
 		if boundStat == nil {
@@ -61,10 +61,10 @@ func init() {
 		return tsc, nil
 	}
 	tcGenFuncMap[trafficControllerGenKey{
-		tokenCalculateStrategy: Direct,
+		tokenCalculateStrategy: Constant,
 		controlBehavior:        Throttling,
 	}] = func(rule *Rule, _ *standaloneStatistic) (*TrafficShapingController, error) {
-		// Direct token calculate strategy and throttling control behavior don't use stat, so we just give a nop stat.
+		// Constant token calculate strategy and throttling control behavior don't use stat, so we just give a nop stat.
 		tsc, err := NewTrafficShapingController(rule, nopStat)
 		if err != nil || tsc == nil {
 			return nil, err
@@ -171,7 +171,7 @@ func onRuleUpdate(rawResRulesMap map[string][]*Rule) (err error) {
 		}
 	}()
 
-	// ignore invalid rules
+	// 忽略无效规则
 	validResRulesMap := make(map[string][]*Rule, len(rawResRulesMap))
 	for res, rules := range rawResRulesMap {
 		validResRules := make([]*Rule, 0, len(rules))
@@ -216,8 +216,8 @@ func onRuleUpdate(rawResRulesMap map[string][]*Rule) (err error) {
 	return nil
 }
 
-// LoadRules loads the given flow rules to the rule manager, while all previous rules will be replaced.
-// the first returned value indicates whether do real load operation, if the rules is the same with previous rules, return false
+// LoadRules 将给定的流规则加载到规则管理器中，而之前的所有规则将被替换。
+// 第一个返回值表示是否做实加载操作，如果规则与前一个规则相同，返回false
 func LoadRules(rules []*Rule) (bool, error) {
 	resRulesMap := make(map[string][]*Rule, 16)
 	for _, rule := range rules {
@@ -309,7 +309,7 @@ func LoadRulesOfResource(res string, rules []*Rule) (bool, error) {
 	return true, err
 }
 
-// getRules returns all the rules。Any changes of rules take effect for flow module
+// getRules returns all the rules.Any changes of rules take effect for flow module
 // getRules is an internal interface.
 func getRules() []*Rule {
 	tcMux.RLock()
@@ -318,7 +318,7 @@ func getRules() []*Rule {
 	return rulesFrom(tcMap)
 }
 
-// getRulesOfResource returns specific resource's rules。Any changes of rules take effect for flow module
+// getRulesOfResource returns specific resource's rules.Any changes of rules take effect for flow module
 // getRulesOfResource is an internal interface.
 func getRulesOfResource(res string) []*Rule {
 	tcMux.RLock()
@@ -393,9 +393,7 @@ func generateStatFor(rule *Rule) (*standaloneStatistic, error) {
 	}
 
 	intervalInMs := rule.StatIntervalInMs
-
 	var retStat standaloneStatistic
-
 	var resNode *stat.ResourceNode
 	if rule.RelationStrategy == AssociatedResource {
 		// use associated statistic
@@ -458,7 +456,7 @@ func SetTrafficShapingGenerator(tokenCalculateStrategy TokenCalculateStrategy, c
 		return errors.New("nil generator")
 	}
 
-	if tokenCalculateStrategy >= Direct && tokenCalculateStrategy <= WarmUp {
+	if tokenCalculateStrategy >= Constant && tokenCalculateStrategy <= WarmUp {
 		return errors.New("not allowed to replace the generator for default control strategy")
 	}
 	if controlBehavior >= Reject && controlBehavior <= Throttling {
@@ -475,7 +473,7 @@ func SetTrafficShapingGenerator(tokenCalculateStrategy TokenCalculateStrategy, c
 }
 
 func RemoveTrafficShapingGenerator(tokenCalculateStrategy TokenCalculateStrategy, controlBehavior ControlBehavior) error {
-	if tokenCalculateStrategy >= Direct && tokenCalculateStrategy <= WarmUp {
+	if tokenCalculateStrategy >= Constant && tokenCalculateStrategy <= WarmUp {
 		return errors.New("not allowed to replace the generator for default control strategy")
 	}
 	if controlBehavior >= Reject && controlBehavior <= Throttling {
@@ -499,24 +497,21 @@ func getTrafficControllerListFor(name string) []*TrafficShapingController {
 }
 
 func calculateReuseIndexFor(r *Rule, oldResTcs []*TrafficShapingController) (equalIdx, reuseStatIdx int) {
-	// the index of equivalent rule in old traffic shaping controller slice
+	// 旧的流量整形控制器片中等价规则的索引
 	equalIdx = -1
-	// the index of statistic reusable rule in old traffic shaping controller slice
+	// 旧的流量整形控制器片中统计可重用规则的索引
 	reuseStatIdx = -1
 
 	for idx, oldTc := range oldResTcs {
 		oldRule := oldTc.BoundRule()
 		if oldRule.isEqualsTo(r) {
-			// break if there is equivalent rule
 			equalIdx = idx
 			break
 		}
-		// search the index of first stat reusable rule
 		if !oldRule.isStatReusable(r) {
 			continue
 		}
 		if reuseStatIdx >= 0 {
-			// had find reuse rule.
 			continue
 		}
 		reuseStatIdx = idx
@@ -524,7 +519,7 @@ func calculateReuseIndexFor(r *Rule, oldResTcs []*TrafficShapingController) (equ
 	return equalIdx, reuseStatIdx
 }
 
-// buildResourceTrafficShapingController builds TrafficShapingController slice from rules. the resource of rules must be equals to res
+// buildResourceTrafficShapingController根据规则构建TrafficShapingController片。规则的资源必须等于res
 func buildResourceTrafficShapingController(res string, rulesOfRes []*Rule, oldResTcs []*TrafficShapingController) []*TrafficShapingController {
 	newTcsOfRes := make([]*TrafficShapingController, 0, len(rulesOfRes))
 	for _, rule := range rulesOfRes {
@@ -532,9 +527,8 @@ func buildResourceTrafficShapingController(res string, rulesOfRes []*Rule, oldRe
 			logging.Error(errors.Errorf("unmatched resource name expect: %s, actual: %s", res, rule.Resource), "Unmatched resource name in flow.buildResourceTrafficShapingController()", "rule", rule)
 			continue
 		}
-		equalIdx, reuseStatIdx := calculateReuseIndexFor(rule, oldResTcs)
+		equalIdx, reuseStatIdx := calculateReuseIndexFor(rule, oldResTcs) // 计算之前的规则中，可以重用的
 
-		// First check equals scenario
 		if equalIdx >= 0 {
 			// reuse the old tc
 			equalOldTc := oldResTcs[equalIdx]
@@ -573,7 +567,7 @@ func buildResourceTrafficShapingController(res string, rulesOfRes []*Rule, oldRe
 	return newTcsOfRes
 }
 
-// IsValidRule checks whether the given Rule is valid.
+// IsValidRule 检查给定的规则是否有效。
 func IsValidRule(rule *Rule) error {
 	if rule == nil {
 		return errors.New("nil Rule")

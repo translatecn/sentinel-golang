@@ -11,53 +11,53 @@ var entryOptsPool = sync.Pool{
 		return &EntryOptions{
 			resourceType: base.ResTypeCommon, //
 			entryType:    base.Outbound,      // 流量类型
-			batchCount:   1,
-			flag:         0,
-			slotChain:    nil,
-			args:         nil,
-			attachments:  nil,
+			batchCount:   1,                  //
+			flag:         0,                  //
+			slotChain:    nil,                //
+			args:         nil,                //
+			attachments:  nil,                //
 		}
 	},
 }
 
-// EntryOptions 表示哨兵资源条目的选项。
+// EntryOptions 表示哨兵资源条目的选项.
 type EntryOptions struct {
-	resourceType base.ResourceType
-	entryType    base.TrafficType // 流量类型
-	batchCount   uint32
-	flag         int32
-	slotChain    *base.SlotChain
-	args         []interface{}
-	attachments  map[interface{}]interface{}
+	resourceType base.ResourceType           //
+	entryType    base.TrafficType            // 流量类型
+	batchCount   uint32                      // 每个 entry 需要消耗的并发数
+	flag         int32                       //
+	slotChain    *base.SlotChain             //
+	args         []interface{}               //
+	attachments  map[interface{}]interface{} //
 }
 
 func (o *EntryOptions) Reset() {
-	o.resourceType = base.ResTypeCommon
-	o.entryType = base.Outbound
-	o.batchCount = 1
-	o.flag = 0
-	o.slotChain = nil
-	o.args = o.args[:0]
-	o.attachments = nil
+	o.resourceType = base.ResTypeCommon //
+	o.entryType = base.Outbound         //
+	o.batchCount = 1                    // 每个 entry 需要消耗的并发数
+	o.flag = 0                          //
+	o.slotChain = nil                   //
+	o.args = o.args[:0]                 //
+	o.attachments = nil                 //
 }
 
 type EntryOption func(*EntryOptions)
 
-// WithResourceType 使用给定的资源类型设置资源项。
+// WithResourceType 使用给定的资源类型设置资源项.
 func WithResourceType(resourceType base.ResourceType) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.resourceType = resourceType
 	}
 }
 
-// WithTrafficType 使用给定的流量类型设置资源项。
+// WithTrafficType 使用给定的流量类型设置资源项.
 func WithTrafficType(entryType base.TrafficType) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.entryType = entryType
 	}
 }
 
-// WithBatchCount 使用给定的批处理计数(默认为1)设置资源条目。
+// WithBatchCount 使用给定的批处理计数(默认为1)设置资源条目.
 func WithBatchCount(batchCount uint32) EntryOption {
 	return func(opts *EntryOptions) {
 		opts.batchCount = batchCount
@@ -112,7 +112,7 @@ func entry(resource string, options *EntryOptions) (*base.SentinelEntry, *base.B
 	if sc == nil {
 		return base.NewSentinelEntry(nil, rw, nil), nil
 	}
-	// 从池中获取上下文。
+	// 从池中获取上下文.
 	ctx := sc.GetPooledContext()
 	ctx.Resource = rw
 	ctx.Input.BatchCount = options.batchCount
@@ -131,8 +131,7 @@ func entry(resource string, options *EntryOptions) (*base.SentinelEntry, *base.B
 		return e, nil
 	}
 	if r.Status() == base.ResultStatusBlocked {
-		// r will be put to Pool in calling Exit()
-		// must finish the lifecycle of r.
+		// 在调用Exit()时，r将被放到Pool中，必须完成r的生命周期。
 		blockErr := base.NewBlockErrorFromDeepCopy(r.BlockError())
 		e.Exit()
 		return nil, blockErr

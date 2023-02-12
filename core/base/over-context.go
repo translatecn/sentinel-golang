@@ -3,22 +3,15 @@ package base
 import "github.com/alibaba/sentinel-golang/util"
 
 type EntryContext struct {
-	entry *SentinelEntry
-	// internal error when sentinel Entry or
-	// biz error of downstream
-	err error
-	// Use to calculate RT
-	startTime uint64
-	// the rt of this transaction
-	rt uint64
-
-	Resource *ResourceWrapper
-	StatNode StatNode
-
+	entry           *SentinelEntry
+	err             error
+	startTime       uint64 // 用于计算RT
+	rt              uint64 // 这笔交易的费用
+	Resource        *ResourceWrapper
+	StatNode        StatNode
 	Input           *SentinelInput
 	RuleCheckResult *TokenResult // 规则槽检查的结果
-	// reserve for storing some intermediate data from the Entry execution process
-	Data map[interface{}]interface{}
+	Data            map[interface{}]interface{}
 }
 
 func (ctx *EntryContext) SetEntry(entry *SentinelEntry) {
@@ -69,7 +62,7 @@ type SentinelInput struct {
 	BatchCount  uint32
 	Flag        int32
 	Args        []interface{}
-	Attachments map[interface{}]interface{} // 当调用context in slot时，在此上下文中存储一些值。
+	Attachments map[interface{}]interface{} // 当调用context in slot时，在此上下文中存储一些值.
 }
 
 func (i *SentinelInput) reset() {
@@ -81,9 +74,7 @@ func (i *SentinelInput) reset() {
 	}
 }
 
-// Reset init EntryContext,
 func (ctx *EntryContext) Reset() {
-	// reset all fields of ctx
 	ctx.entry = nil
 	ctx.err = nil
 	ctx.startTime = 0

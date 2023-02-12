@@ -13,50 +13,41 @@ type Slot interface {
 	Order() uint32
 }
 
-// StatPrepareSlot 负责统计前的一些准备工作。例如:init结构等等
+// StatPrepareSlot 负责统计前的一些准备工作.例如:init结构等等
 // 准备函数初始化
 // 例如:init统计结构，节点等
 // 准备的结果存储在EntryContext中
 // 所有statprepareslot依次执行
-// 准备函数不抛出panic。
+// 准备函数不抛出panic.
 type StatPrepareSlot interface {
 	Slot
 	Prepare(ctx *EntryContext)
 }
 
 // RuleCheckSlot 是基于规则的检查策略
-// 所有检查规则都必须实现此接口。
+// 所有检查规则都必须实现此接口.
 type RuleCheckSlot interface {
 	Slot
 	// Check 检查函数进行一些验证,可以切断槽
-	// 每个TokenResult将返回检查结果,上层逻辑将根据SlotResult控制管道。
+	// 每个TokenResult将返回检查结果,上层逻辑将根据SlotResult控制管道.
 	Check(ctx *EntryContext) *TokenResult
 }
 
-// StatSlot is responsible for counting all custom biz metrics.
-// StatSlot would not handle any panic, and pass up all panic to slot chain
+// StatSlot 负责统计所有自定义业务指标。
+// StatSlot 将不处理任何panic，并将所有panic传递给slot chain
 type StatSlot interface {
 	Slot
-	// OnEntryPass function will be invoked when StatPrepareSlots and RuleCheckSlots execute pass
-	// StatSlots will do some statistic logic, such as QPS、log、etc
-	OnEntryPassed(ctx *EntryContext)
-	// OnEntryBlocked function will be invoked when StatPrepareSlots and RuleCheckSlots fail to execute
-	// It may be inbound flow control or outbound cir
-	// StatSlots will do some statistic logic, such as QPS、log、etc
-	// blockError introduce the block detail
-	OnEntryBlocked(ctx *EntryContext, blockError *BlockError)
-	// OnCompleted function will be invoked when chain exits.
-	// The semantics of OnCompleted is the entry passed and completed
-	// Note: blocked entry will not call this function
-	OnCompleted(ctx *EntryContext)
+	OnEntryPassed(ctx *EntryContext)                          // StatSlots将执行一些统计逻辑，例如QPS, log等
+	OnEntryBlocked(ctx *EntryContext, blockError *BlockError) // StatSlots将执行一些统计逻辑，例如QPS, log等
+	OnCompleted(ctx *EntryContext)                            // 将在chain退出时被调用。OnCompleted的语义是传递和完成的条目 注意:被阻塞的入口不会调用这个函数
 }
 
-// SlotChain 保持所有系统槽位和定制槽位。
-// SlotChain 支持开发人员开发的插件槽。
+// SlotChain 保持所有系统槽位和定制槽位.
+// SlotChain 支持开发人员开发的插件槽.
 type SlotChain struct {
-	statPres   []StatPrepareSlot // 按StatPrepareSlot.Order()值升序排列。
-	ruleChecks []RuleCheckSlot   // 按StatPrepareSlot.Order()值升序排列。
-	stats      []StatSlot        // 按StatPrepareSlot.Order()值升序排列。
+	statPres   []StatPrepareSlot // 按StatPrepareSlot.Order()值升序排列.
+	ruleChecks []RuleCheckSlot   // 按StatPrepareSlot.Order()值升序排列.,每个请求到来 都会经过至少5轮检查
+	stats      []StatSlot        // 按StatPrepareSlot.Order()值升序排列.
 	ctxPool    *sync.Pool        // EntryContext
 }
 
@@ -99,8 +90,8 @@ func (sc *SlotChain) RefurbishContext(c *EntryContext) {
 	}
 }
 
-// AddStatPrepareSlot 将StatPrepareSlot槽位添加到SlotChain的StatPrepareSlot列表中。
-// 列表中的所有StatPrepareSlot将按照StatPrepareSlot. order()从小到大排序。
+// AddStatPrepareSlot 将StatPrepareSlot槽位添加到SlotChain的StatPrepareSlot列表中.
+// 列表中的所有StatPrepareSlot将按照StatPrepareSlot. order()从小到大排序.
 // AddStatPrepareSlot是非线程安全的
 // 并发场景下，AddStatPrepareSlot必须由SlotChain保护RWMutex
 func (sc *SlotChain) AddStatPrepareSlot(s StatPrepareSlot) {
@@ -110,10 +101,6 @@ func (sc *SlotChain) AddStatPrepareSlot(s StatPrepareSlot) {
 	})
 }
 
-// AddRuleCheckSlot adds the RuleCheckSlot to the RuleCheckSlot list of the SlotChain.
-// All RuleCheckSlot in the list will be sorted according to RuleCheckSlot.Order() in ascending order.
-// AddRuleCheckSlot is non-thread safe,
-// In concurrency scenario, AddRuleCheckSlot must be guarded by SlotChain.RWMutex#Lock
 func (sc *SlotChain) AddRuleCheckSlot(s RuleCheckSlot) {
 	sc.ruleChecks = append(sc.ruleChecks, s)
 	sort.SliceStable(sc.ruleChecks, func(i, j int) bool {
@@ -121,10 +108,6 @@ func (sc *SlotChain) AddRuleCheckSlot(s RuleCheckSlot) {
 	})
 }
 
-// AddStatSlot adds the StatSlot to the StatSlot list of the SlotChain.
-// All StatSlot in the list will be sorted according to StatSlot.Order() in ascending order.
-// AddStatSlot is non-thread safe,
-// In concurrency scenario, AddStatSlot must be guarded by SlotChain.RWMutex#Lock
 func (sc *SlotChain) AddStatSlot(s StatSlot) {
 	sc.stats = append(sc.stats, s)
 	sort.SliceStable(sc.stats, func(i, j int) bool {
@@ -132,9 +115,9 @@ func (sc *SlotChain) AddStatSlot(s StatSlot) {
 	})
 }
 
-// Entry 如果内部panic，返回TokenResult, nil。
+// Entry 如果内部panic，返回TokenResult, nil.
 func (sc *SlotChain) Entry(ctx *EntryContext) *TokenResult {
-	// 这种情况不应该发生，除非哨兵内部存在错误。
+	// 这种情况不应该发生，除非哨兵内部存在错误.
 	// 如果发生了，需要在EntryContext中添加TokenResult
 	defer func() {
 		if err := recover(); err != nil {
@@ -173,17 +156,15 @@ func (sc *SlotChain) Entry(ctx *EntryContext) *TokenResult {
 		ctx.RuleCheckResult = ruleCheckRet
 	}
 
-	// execute statistic slot
+	// 执行统计槽
 	ss := sc.stats
 	ruleCheckRet = ctx.RuleCheckResult
 	if len(ss) > 0 {
 		for _, s := range ss {
-			// indicate the result of rule based checking slot.
-			if !ruleCheckRet.IsBlocked() {
+			if !ruleCheckRet.IsBlocked() { // 表示基于规则检查槽位的结果.
 				s.OnEntryPassed(ctx)
 			} else {
-				// The block error should not be nil.
-				s.OnEntryBlocked(ctx, ruleCheckRet.blockErr)
+				s.OnEntryBlocked(ctx, ruleCheckRet.blockErr) // block 错误不应该是nil.
 			}
 		}
 	}
@@ -196,12 +177,10 @@ func (sc *SlotChain) exit(ctx *EntryContext) {
 			"EntryContext or SentinelEntry is nil in SlotChain.exit()", "ctx", ctx)
 		return
 	}
-	// The OnCompleted is called only when entry passed
 	if ctx.IsBlocked() {
 		return
 	}
 	for _, s := range sc.stats {
 		s.OnCompleted(ctx)
 	}
-	// relieve the context here
 }

@@ -42,7 +42,7 @@ func (s *Slot) Check(ctx *base.EntryContext) *base.TokenResult {
 			logging.Warn("[FlowSlot Check]Nil traffic controller found", "resourceName", res)
 			continue
 		}
-		r := canPassCheck(tc, ctx.StatNode, ctx.Input.BatchCount)
+		r := canPassCheck(tc, ctx.StatNode, ctx.Input.BatchCount) // 主要是检查，当前的计数器是否 <= 阈值
 		if r == nil {
 			continue
 		}
@@ -60,6 +60,7 @@ func (s *Slot) Check(ctx *base.EntryContext) *base.TokenResult {
 	return result
 }
 
+// 检查是否通过
 func canPassCheck(tc *TrafficShapingController, node base.StatNode, batchCount uint32) *base.TokenResult {
 	return canPassCheckWithFlag(tc, node, batchCount, 0)
 }
@@ -69,7 +70,7 @@ func canPassCheckWithFlag(tc *TrafficShapingController, node base.StatNode, batc
 }
 
 func selectNodeByRelStrategy(rule *Rule, node base.StatNode) base.StatNode {
-	if rule.RelationStrategy == AssociatedResource {
+	if rule.RelationStrategy == AssociatedResource { // 表示使用关联的resource做流控
 		return stat.GetResourceNode(rule.RefResource)
 	}
 	return node

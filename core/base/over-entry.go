@@ -13,7 +13,7 @@ type SentinelEntry struct { // 哨兵监控项
 	res          *ResourceWrapper //
 	ctx          *EntryContext    // 一个条目只包含一个上下文
 	exitHandlers []ExitHandler    //
-	sc           *SlotChain       // 每个条目都有一个槽链。这意味着这个元素会经过sc
+	sc           *SlotChain       // 每个条目都有一个槽链.这意味着这个元素会经过sc
 	exitCtl      sync.Once        //
 }
 

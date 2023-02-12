@@ -19,13 +19,11 @@ const (
 )
 
 var (
-	// The timestamp of the last fetching. The time unit is ms (= second * 1000).
 	lastFetchTime int64 = -1
 	writeChan           = make(chan metricTimeMap, logFlushQueueSize)
 	stopChan            = make(chan struct{})
-
-	metricWriter MetricLogWriter
-	initOnce     sync.Once
+	metricWriter  MetricLogWriter
+	initOnce      sync.Once
 )
 
 func InitTask() (err error) {
@@ -41,9 +39,9 @@ func InitTask() (err error) {
 			return
 		}
 
-		// Schedule the log flushing task
+		// 计划日志刷新任务
 		go util.RunWithRecover(writeTaskLoop)
-		// Schedule the log aggregating task
+		// 调度日志聚合任务
 		ticker := util.NewTicker(time.Duration(flushInterval) * time.Second)
 		go util.RunWithRecover(func() {
 			for {
@@ -130,6 +128,7 @@ func isItemTimestampInTime(ts uint64, currentSecStart uint64) bool {
 	return int64(ts) >= lastFetchTime && ts < currentSecStart
 }
 
+// 当前指标项
 func currentMetricItems(retriever base.MetricItemRetriever, currentTime uint64) map[uint64]*base.MetricItem {
 	items := retriever.MetricsOnCondition(func(ts uint64) bool {
 		return isItemTimestampInTime(ts, currentTime)

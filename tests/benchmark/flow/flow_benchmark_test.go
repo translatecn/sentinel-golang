@@ -27,7 +27,7 @@ func init() {
 	benchmark.InitSentinel()
 	rule1 := &flow.Rule{
 		Resource:               resReject,
-		TokenCalculateStrategy: flow.Direct,
+		TokenCalculateStrategy: flow.Constant,
 		ControlBehavior:        flow.Reject,
 		Threshold:              math.MaxFloat64,
 		StatIntervalInMs:       1000,

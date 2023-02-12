@@ -11,7 +11,6 @@ import (
 
 const metricPartSeparator = "|"
 
-// MetricItem represents the data of metric log per line.
 type MetricItem struct {
 	Resource       string
 	Classification int32

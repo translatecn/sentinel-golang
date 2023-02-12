@@ -83,5 +83,5 @@ func (s *Slot) recordCompleteFor(sn base.StatNode, count uint32, rt uint64, err 
 	}
 	sn.AddCount(base.MetricEventRt, int64(rt))
 	sn.AddCount(base.MetricEventComplete, int64(count))
-	sn.DecreaseConcurrency()
+	sn.DecreaseConcurrency() // 降低并发量，应为当前请求完成了
 }

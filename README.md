@@ -69,3 +69,11 @@ with [`good first issue`](https://github.com/alibaba/sentinel-golang/issues?q=is
 
 - DingTalk Group (钉钉群): 23339422
 - [Gitter](https://gitter.im/alibaba/Sentinel)
+
+
+# important
+- CalculateAllowedTokens 根据规则阈值 和token计算策略计算实际的阈值
+- tc.boundStat.writeOnlyMetric.AddCount(base.MetricEventPass, int64(ctx.Input.BatchCount)) 增加计数值
+- DoCheck 检查是否限流
+- sentinel.Entry 请求入口
+- BuildDefaultSlotChain 构建相应的检查逻辑

@@ -2,10 +2,10 @@ package base
 
 import "fmt"
 
-// BlockError 表示请求被哨兵拦截。
+// BlockError 表示请求被哨兵拦截.
 type BlockError struct {
 	blockType     BlockType    // 阻塞类型，rpc,db...
-	blockMsg      string       // 提供关于块错误的附加消息。
+	blockMsg      string       // 提供关于阻塞错误的附加消息.
 	rule          SentinelRule //
 	snapshotValue interface{}  // 表示触发的“快照”值
 }

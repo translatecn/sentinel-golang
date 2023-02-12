@@ -49,7 +49,7 @@ type clockWrapper struct {
 	clock Clock
 }
 
-// RealClock wraps some APIs of time package.
+// RealClock 包装一些api的时间包.
 type RealClock struct{}
 
 func NewRealClock() *RealClock {
@@ -217,13 +217,13 @@ func (tc *RealTickerCreator) NewTicker(d time.Duration) Ticker {
 	return NewRealTicker(d)
 }
 
-// SetClock 设置util包使用的时钟。
-// 一般情况下，不需要设置。它通常用于测试。
+// SetClock 设置util包使用的时钟.
+// 一般情况下，不需要设置.它通常用于测试.
 func SetClock(c Clock) {
 	currentClock.Store(&clockWrapper{c})
 }
 
-// CurrentClock 返回util包使用的当前时钟。
+// CurrentClock 返回util包使用的当前时钟.
 func CurrentClock() Clock {
 	return currentClock.Load().(*clockWrapper).clock
 }
@@ -253,7 +253,7 @@ func FormatDate(tsMillis uint64) string {
 	return time.Unix(0, int64(tsMillis*UnixTimeUnitOffset)).Format(DateFormat)
 }
 
-// Returns the current Unix timestamp in milliseconds.
+// CurrentTimeMillis 返回以毫秒为单位的当前Unix时间戳.
 func CurrentTimeMillis() uint64 {
 	return CurrentClock().CurrentTimeMillis()
 }
@@ -268,8 +268,8 @@ func Now() time.Time {
 	return CurrentClock().Now()
 }
 
-// Sleep 暂停当前goroutine至少持续时间d。
-// 当持续时间为负或为零时，Sleep会立即返回。
+// Sleep 暂停当前goroutine至少持续时间d.
+// 当持续时间为负或为零时，Sleep会立即返回.
 func Sleep(d time.Duration) {
 	CurrentClock().Sleep(d)
 }

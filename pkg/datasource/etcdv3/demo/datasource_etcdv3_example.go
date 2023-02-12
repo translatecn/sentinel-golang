@@ -36,7 +36,7 @@ func startFlowModule() {
 	_, err = flow.LoadRules([]*flow.Rule{
 		{
 			Resource:               "some-test",
-			TokenCalculateStrategy: flow.Direct,
+			TokenCalculateStrategy: flow.Constant,
 			ControlBehavior:        flow.Reject,
 			Threshold:              10,
 			StatIntervalInMs:       1000,

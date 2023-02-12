@@ -8,14 +8,10 @@ const (
 	ParamsMaxCapacity   = 20000
 )
 
-// ParamsMetric carries real-time counters for frequent ("hot spot") parameters.
-//
-// For each cache map, the key is the parameter value, while the value is the counter.
+// ParamsMetric 携带频繁(热点)参数的实时计数器。
+// 对于每个缓存映射，键是参数值，而值是计数器。
 type ParamsMetric struct {
-	// RuleTimeCounter records the last added token timestamp.
-	RuleTimeCounter cache.ConcurrentCounterCache
-	// RuleTokenCounter records the number of tokens.
-	RuleTokenCounter cache.ConcurrentCounterCache
-	// ConcurrencyCounter records the real-time concurrency.
-	ConcurrencyCounter cache.ConcurrentCounterCache
+	RuleTimeCounter    cache.ConcurrentCounterCache // 记录最后添加的令牌时间戳。
+	RuleTokenCounter   cache.ConcurrentCounterCache // 记录令牌的数量。
+	ConcurrencyCounter cache.ConcurrentCounterCache // 实时并发
 }

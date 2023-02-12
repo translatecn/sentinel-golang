@@ -8,24 +8,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-// MetricBucket represents the entity to record metrics per minimum time unit (i.e. the bucket time span).
-// Note that all operations of the MetricBucket are required to be thread-safe.
+// MetricBucket 表示每个最小时间单位(即桶时间跨度)记录度量的实体.
+// 注意MetricBucket的所有操作都要求是线程安全的.   // 滑动窗口中的每个桶
 type MetricBucket struct {
-	// Value of statistic
-	counter        [base.MetricEventTotal]int64
-	minRt          int64
-	maxConcurrency int32
+	counter        [base.MetricEventTotal]int64 // 指标统计值, 数组
+	minRt          int64                        // 最小的请求时间
+	maxConcurrency int32                        // 最大并发量
 }
 
 func NewMetricBucket() *MetricBucket {
 	mb := &MetricBucket{
-		minRt:          base.DefaultStatisticMaxRt,
-		maxConcurrency: 0,
+		minRt:          base.DefaultStatisticMaxRt, // 最大的请求时间
+		maxConcurrency: 0,                          //
 	}
 	return mb
 }
 
-// Add statistic count for the given metric event.
+// Add 添加给定度量事件的统计计数
 func (mb *MetricBucket) Add(event base.MetricEvent, count int64) {
 	if event >= base.MetricEventTotal || event < 0 {
 		logging.Error(errors.Errorf("Unknown metric event: %v", event), "")
@@ -38,11 +37,12 @@ func (mb *MetricBucket) Add(event base.MetricEvent, count int64) {
 	mb.addCount(event, count)
 }
 
+// 重中之重 ✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️✈️
 func (mb *MetricBucket) addCount(event base.MetricEvent, count int64) {
 	atomic.AddInt64(&mb.counter[event], count)
 }
 
-// Get current statistic count of the given metric event.
+// Get 获取给定度量事件的当前统计计数.
 func (mb *MetricBucket) Get(event base.MetricEvent) int64 {
 	if event >= base.MetricEventTotal || event < 0 {
 		logging.Error(errors.Errorf("Unknown metric event: %v", event), "")
@@ -74,7 +74,6 @@ func (mb *MetricBucket) MinRt() int64 {
 func (mb *MetricBucket) UpdateConcurrency(concurrency int32) {
 	cc := concurrency
 	if cc > atomic.LoadInt32(&mb.maxConcurrency) {
-		// Might not be accurate here.
 		atomic.StoreInt32(&mb.maxConcurrency, cc)
 	}
 }

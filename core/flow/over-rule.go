@@ -7,11 +7,11 @@ import (
 	"github.com/alibaba/sentinel-golang/util"
 )
 
-// RelationStrategy 表示基于调用关系的流控制策略。
+// RelationStrategy 表示基于调用关系的流控制策略.
 type RelationStrategy int32
 
 const (
-	CurrentResource    RelationStrategy = iota // 表示使用当前规则的resource做流控；。
+	CurrentResource    RelationStrategy = iota // 表示使用当前规则的resource做流控；.
 	AssociatedResource                         // 表示使用关联的resource做流控，关联的resource在字段 RefResource 定义；
 )
 
@@ -26,19 +26,19 @@ func (s RelationStrategy) String() string {
 	}
 }
 
-// TokenCalculateStrategy 当前流量控制器的Token计算策略。
+// TokenCalculateStrategy 当前流量控制器的Token计算策略.
 type TokenCalculateStrategy int32
 
 const (
-	Direct         TokenCalculateStrategy = iota // Direct表示直接使用Threshold作为阈值
+	Constant       TokenCalculateStrategy = iota // Direct表示直接使用Threshold作为阈值
 	WarmUp                                       // WarmUp表示使用预热方式计算Token的阈值
 	MemoryAdaptive                               // MemoryAdaptive表示使用内存自适应方式计算Token的阈值
 )
 
 func (s TokenCalculateStrategy) String() string {
 	switch s {
-	case Direct:
-		return "Direct"
+	case Constant:
+		return "Constant"
 	case WarmUp:
 		return "WarmUp"
 	case MemoryAdaptive:
@@ -48,7 +48,7 @@ func (s TokenCalculateStrategy) String() string {
 	}
 }
 
-// ControlBehavior // 控制行为，。
+// ControlBehavior // 控制行为，.
 type ControlBehavior int32
 
 const (
@@ -69,19 +69,19 @@ func (s ControlBehavior) String() string {
 
 // Rule 描述了流量控制策略，流量控制策略是基于QPS统计度量的
 type Rule struct {
-	ID                     string                 `json:"id,omitempty"`           // 表示规则的唯一ID(可选)。
+	ID                     string                 `json:"id,omitempty"`           // 表示规则的唯一ID(可选).
 	Resource               string                 `json:"resource"`               // 表示资源名称
 	TokenCalculateStrategy TokenCalculateStrategy `json:"tokenCalculateStrategy"` // 令牌计算策略
 	ControlBehavior        ControlBehavior        `json:"controlBehavior"`        // 控制行为
 
-	Threshold         float64          `json:"threshold"`         // 表示流控阈值；如果字段 StatIntervalInMs 是1000(也就是1秒)，  那么Threshold就表示QPS，流量控制器也就会依据资源的QPS来做流控。
-	RelationStrategy  RelationStrategy `json:"relationStrategy"`  // 调用关系限流策略，
+	Threshold         float64          `json:"threshold"`         // 表示流控阈值；如果字段 StatIntervalInMs 是1000(也就是1秒)，  那么Threshold就表示QPS，流量控制器也就会依据资源的QPS来做流控.
+	RelationStrategy  RelationStrategy `json:"relationStrategy"`  // 调用关联限流策略
 	RefResource       string           `json:"refResource"`       // 关联资源
 	MaxQueueingTimeMs uint32           `json:"maxQueueingTimeMs"` // 匀速排队的最大等待时间，该字段仅仅对控制行为是匀速排队时生效, 仅在 ControlBehavior 为 Throttling 时生效
 
 	WarmUpPeriodSec  uint32 `json:"warmUpPeriodSec"`  // 预热的时间长度，该字段仅仅对Token计算策略是WarmUp时生效；
 	WarmUpColdFactor uint32 `json:"warmUpColdFactor"` // 预热的因子，默认是3，该值的设置会影响预热的速度,该字段仅仅对Token计算策略是WarmUp时生效
-	StatIntervalInMs uint32 `json:"statIntervalInMs"` // 规则对应的流量控制器的独立统计结构的统计周期。如果StatIntervalInMs是1000，也就是统计QPS。
+	StatIntervalInMs uint32 `json:"statIntervalInMs"` // 规则对应的流量控制器的独立统计结构的统计周期.如果StatIntervalInMs是1000，也就是统计QPS.
 
 	LowMemUsageThreshold  int64 `json:"lowMemUsageThreshold"`  // 内存低使用率时的限流阈值，该字段仅在Token计算策略是MemoryAdaptive时生效
 	HighMemUsageThreshold int64 `json:"highMemUsageThreshold"` // 内存高使用率时的限流阈值，该字段仅在Token计算策略是MemoryAdaptive时生效
@@ -116,6 +116,7 @@ func (r *Rule) isStatReusable(newRule *Rule) bool {
 		r.needStatistic() && newRule.needStatistic()
 }
 
+// 需不需要统计指标
 func (r *Rule) needStatistic() bool {
 	return r.TokenCalculateStrategy == WarmUp || r.ControlBehavior == Reject
 }

@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// BucketLeapArray is the sliding window implementation based on LeapArray (as the sliding window infrastructure)
-// and MetricBucket (as the data type). The MetricBucket is used to record statistic
-// metrics per minimum time unit (i.e. the bucket time span).
+// BucketLeapArray 是基于LeapArray的滑动窗口实现(作为滑动窗口基础设施)
+// 和MetricBucket(作为数据类型).MetricBucket用于记录统计信息
+// 每个最小时间单位(即桶时间跨度)的度量.
 type BucketLeapArray struct {
 	data     LeapArray
 	dataType string
@@ -28,31 +28,26 @@ func (bla *BucketLeapArray) ResetBucketTo(bw *BucketWrap, startTime uint64) *Buc
 	return bw
 }
 
-// NewBucketLeapArray creates a BucketLeapArray with given attributes.
-//
-// The sampleCount represents the number of buckets, while intervalInMs represents
-// the total time span of sliding window. Note that the sampleCount and intervalInMs must be positive
-// and satisfies the condition that intervalInMs%sampleCount == 0.
-// The validation must be done before call NewBucketLeapArray.
-func NewBucketLeapArray(sampleCount uint32, intervalInMs uint32) *BucketLeapArray {
-	// TODO: also check params here.
-	bucketLengthInMs := intervalInMs / sampleCount
+// NewBucketLeapArray 创建一个具有给定属性的BucketLeapArray.
+// bucketCount 表示桶数，intervalInMs表示滑动窗口的总时间跨度.
+func NewBucketLeapArray(bucketCount uint32, intervalInMs uint32) *BucketLeapArray {
+	bucketLengthInMs := intervalInMs / bucketCount // 每个bucket的事件长度
 	ret := &BucketLeapArray{
 		data: LeapArray{
 			bucketLengthInMs: bucketLengthInMs,
-			sampleCount:      sampleCount,
+			bucketCount:      bucketCount,
 			intervalInMs:     intervalInMs,
 			array:            nil,
 		},
 		dataType: "MetricBucket",
 	}
-	arr := NewAtomicBucketWrapArray(int(sampleCount), bucketLengthInMs, ret)
+	arr := NewAtomicBucketWrapArray(int(bucketCount), bucketLengthInMs, ret)
 	ret.data.array = arr
 	return ret
 }
 
 func (bla *BucketLeapArray) SampleCount() uint32 {
-	return bla.data.sampleCount
+	return bla.data.bucketCount
 }
 
 func (bla *BucketLeapArray) IntervalInMs() uint32 {
@@ -72,7 +67,6 @@ func (bla *BucketLeapArray) GetIntervalInSecond() float64 {
 }
 
 func (bla *BucketLeapArray) AddCount(event base.MetricEvent, count int64) {
-	// It might panic?
 	bla.addCountWithTime(util.CurrentTimeMillis(), event, count)
 }
 
